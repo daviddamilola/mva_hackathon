@@ -1,0 +1,17 @@
+# Controlled-access subject data (DUA) — never commit
+local/
+.local/
+data/
+work/
+results/
+*.vcf*
+*.bam
+*.bai
+*.cram
+*.crai
+*.fastq*
+*.fq.gz
+
+# Nextflow runtime
+.nextflow/
+.nextflow.log*
