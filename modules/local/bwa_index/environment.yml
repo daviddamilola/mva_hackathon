@@ -1,0 +1,6 @@
+name: bwa_index
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - bioconda::bwa=0.7.19

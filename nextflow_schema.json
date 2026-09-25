@@ -1,0 +1,75 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/davidoluwasusi/mva-track2/nextflow_schema.json",
+    "title": "mva-track2 pipeline parameters",
+    "description": "Pharmacogenomics, modifier genotypes, mosaic aneuploidy burden and genome QC for one MVA proband (MVA Hackathon 2026, Track 2)",
+    "type": "object",
+    "$defs": {
+        "input_options": {
+            "title": "Input options",
+            "type": "object",
+            "required": ["sample_id", "vcf", "lanes", "hf_repo"],
+            "properties": {
+                "sample_id": { "type": "string", "default": "WGS_EX2312012", "description": "Sample ID; must match the VCF sample column." },
+                "vcf": { "type": "string", "format": "file-path", "default": "${projectDir}/data/WGS_EX2312012_HGWCNDSX7.vcf.gz", "description": "Single-sample VCF (downloaded with hf download, never read from the NFS mount)." },
+                "lanes": { "type": "string", "format": "file-path", "default": "${projectDir}/assets/lanes.csv", "description": "CSV of FASTQ lanes on Hugging Face with upstream sha256 (columns: lane,flowcell,sample_index,r1,r1_sha256,r2,r2_sha256)." },
+                "hf_repo": { "type": "string", "default": "SageBio/mva-hackathon-2026-data", "description": "Hugging Face repo holding the FASTQ." },
+                "hf_repo_type": { "type": "string", "default": "dataset", "enum": ["dataset", "model", "space"] }
+            }
+        },
+        "reference_options": {
+            "title": "Reference options",
+            "type": "object",
+            "properties": {
+                "genome": { "type": "string", "default": "GRCh38", "enum": ["GRCh38"], "description": "Reference build. Only GRCh38 is supported (verified from the VCF header)." },
+                "ref_name": { "type": "string", "default": "GCA_000001405.15_GRCh38_no_alt_plus_hs38d1_analysis_set_maskedGRC_exclusions_v2_no_chr" },
+                "ref_fasta_url": { "type": "string", "format": "uri", "description": "NCBI analysis-set FASTA (gzipped)." },
+                "ref_fasta_md5": { "type": "string", "pattern": "^[0-9a-f]{32}$", "default": "a056c57649f3c9964c68aead3849bbf8" },
+                "ref_mask_bed": { "type": "string", "format": "file-path", "description": "Regions hard-masked to reproduce the maskedGRC_exclusions_v2 reference." },
+                "reference_dir": { "type": "string", "format": "directory-path", "default": "${projectDir}/refs", "description": "Where the prepared FASTA, indexes and bwa index are published." }
+            }
+        },
+        "alignment_options": {
+            "title": "Alignment options",
+            "type": "object",
+            "properties": {
+                "skip_alignment": { "type": "boolean", "default": false, "description": "Skip FASTQ re-alignment (only VCF-based analyses will run)." },
+                "max_parallel_lanes": { "type": "integer", "default": 1, "minimum": 1, "description": "Lanes processed at once. Each needs ~21 GB of FASTQ plus sort temp space." },
+                "optical_dup_distance": { "type": "integer", "default": 2500, "description": "samtools markdup -d (2500 for patterned flowcells)." }
+            }
+        },
+        "analysis_options": {
+            "title": "Analysis options",
+            "type": "object",
+            "properties": {
+                "gene_panel_bed": { "type": "string", "format": "file-path", "description": "Mechanistic modifier panel (GRCh38, +/-10 kb)." },
+                "bin_size": { "type": "integer", "default": 100000, "minimum": 1000, "description": "Coverage bin size in bp for aneuploidy analysis." }
+            }
+        },
+        "output_options": {
+            "title": "Output options",
+            "type": "object",
+            "properties": {
+                "outdir": { "type": "string", "format": "directory-path", "default": "${projectDir}/results", "description": "Output directory (gitignored: contains subject-derived data)." },
+                "publish_dir_mode": { "type": "string", "default": "link", "enum": ["symlink", "rellink", "link", "copy", "copyNoFollow", "move"] }
+            }
+        },
+        "resource_options": {
+            "title": "Max resources",
+            "type": "object",
+            "properties": {
+                "max_cpus": { "type": "integer", "default": 8 },
+                "max_memory": { "type": "string", "default": "14.GB", "pattern": "^\\d+(\\.\\d+)?\\.?\\s*(K|M|G|T)?B$" },
+                "max_time": { "type": "string", "default": "48.h", "pattern": "^(\\d+\\.?\\s*(s|m|h|d|day)\\s*)+$" }
+            }
+        }
+    },
+    "allOf": [
+        { "$ref": "#/$defs/input_options" },
+        { "$ref": "#/$defs/reference_options" },
+        { "$ref": "#/$defs/alignment_options" },
+        { "$ref": "#/$defs/analysis_options" },
+        { "$ref": "#/$defs/output_options" },
+        { "$ref": "#/$defs/resource_options" }
+    ]
+}

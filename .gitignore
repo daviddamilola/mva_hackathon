@@ -1,6 +1,6 @@
 # Controlled-access subject data (DUA) — never commit
-local/
-.local/
+/local/
+/.local/
 data/
 work/
 results/
@@ -15,3 +15,11 @@ results/
 # Nextflow runtime
 .nextflow/
 .nextflow.log*
+
+# macOS
+.DS_Store
+refs/
+tests/stub/work/
+.nf-test/
+null/
+.nextflow.pid
