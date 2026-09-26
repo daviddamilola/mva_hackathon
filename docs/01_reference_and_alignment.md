@@ -1,7 +1,7 @@
 # 01 — Reference reconstruction and re-alignment
 
-Status: **running** (relaunched 2026-09-25 with native arm64 envs). Results below are filled
-in from pipeline outputs as they finish. Anything not yet measured is marked *pending*.
+Status: **complete** (2026-09-26 15:00 BST; Nextflow: 4 tasks succeeded, 5 cached, 0 failed).
+Numbers below come from pipeline outputs. Anything not yet measured is marked *pending*.
 
 ## Why re-align
 
@@ -121,15 +121,59 @@ records this.
 
 ## Results
 
+### Per lane
+
+| Lane | FASTQ sha256 | Reads aligned¹ | Lane CRAM | Wall time | helper tool versions |
+|---|---|---|---|---|---|
+| L1 | R1/R2 OK | 273.8 M | 5.30 GB | 3 h 32 min | pinned |
+| L2 | R1/R2 OK | 269.8 M | 5.28 GB | 3 h 48 min | pinned |
+| L3 | R1/R2 OK | 263.1 M | 5.98 GB | 5 h 43 min | Homebrew samtools 1.21 / hf 2.0.0 (see exception above) |
+| L4 | R1/R2 OK | 266.4 M | 5.24 GB | 4 h 25 min | pinned |
+
+¹ From bwa batch logs (671,142 reads per batch, so each figure is rounded up to the last
+batch). The exact total is the markdup READ count below.
+
+Lanes ran in the order L3, L4, L2, L1. Wall-time differences come mainly from host memory
+pressure: bwa batch times ranged from ~28 s with other apps closed to ~86 s under heavy swapping.
+The FASTQ was deleted after every lane.
+
+### Merged CRAM (`results/alignment/WGS_EX2312012.cram`, 21.5 GB + CRAI)
+
 | Metric | Value |
 |---|---|
-| Contig check | passed (2,580/2,580, identical order) |
-| Lane FASTQ sha256 verification | *pending* (`results/alignment/lanes/*.fastq.sha256.tsv`) |
-| Reads, mapping rate, duplicate rate | *pending* (`results/alignment/*.markdup.stats.txt`, samtools stats) |
-| Mean / median coverage | *pending* (mosdepth, genome QC branch) |
-| Wall time per lane | *pending* |
+| Records (markdup READ = flagstat total) | 1,076,022,877 (1,071,835,104 primary = 535,917,552 pairs; 4,187,773 supplementary; 0 secondary) |
+| Examined for duplicates | 1,067,610,151 (8,412,726 excluded = 4,224,953 unmapped primary + 4,187,773 supplementary) |
+| Duplicate reads (primary) | 137,811,923 = **12.9 %** of examined |
+| of which optical (`-d 2500`) | 106,343,396 of 135,839,907 duplicate pairs (78 %) |
+| Estimated library size | 7.61 × 10⁹ molecules |
+| Raw coverage (primary reads × 149 bp / 3.1 Gb) | ≈ 51.5× |
+| Mapped, non-duplicate coverage (same arithmetic) | ≈ 44.7× (929.8 M reads) |
+| Primary mapped | 99.61 % |
+| Properly paired | 98.12 % |
+| Singletons | 0.34 % |
+| Mate on different chromosome (MAPQ ≥ 5) | 3,738,544 (0.35 %) |
+| Mean / median coverage after dedup | *pending* (mosdepth, genome QC branch) |
+| `samtools quickcheck` | OK |
 
-## Disk footprint (expected)
+Mapping and pairing figures come from a manual `samtools flagstat` run with the pinned
+samtools 1.22.1, outside the pipeline. The QC branch (samtools stats, mosdepth, MultiQC) will
+regenerate them within the pipeline.
+
+Most duplicates are optical. That fits a patterned NovaSeq flowcell, where ExAmp pad-hopping
+duplicates fall within the 2,500-pixel window. Flowcell type and library prep (PCR-free or
+not) aren't documented in the dataset. With 12.9 % duplicates, deduplicated coverage should be
+about 44.7× by read-count arithmetic. mosdepth will give the measured, per-base value.
+
+### Runtime summary
+
+| Step | Wall time |
+|---|---|
+| PREPARE_FASTA (download + mask) | 1 min 35 s |
+| BWA_INDEX | 47 min |
+| FETCH_ALIGN_LANE × 4 (sequential) | 17 h 28 min total |
+| MERGE_MARKDUP | 22 min 34 s |
+
+## Disk footprint
 
 | Item | Size | Location |
 |---|---|---|
