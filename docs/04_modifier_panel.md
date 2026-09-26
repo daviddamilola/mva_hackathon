@@ -1,8 +1,7 @@
 # 04 — Modifier genotypes in the mechanistic panel
 
-Status: **implemented and stub-tested; real run pending** the VEP 116 cache download (resumable,
-checksum-verified). The Results section is filled in from pipeline outputs after that run. Nothing
-here is a placeholder number.
+Status: **implemented and run** (2026-09-26). The numbers below come from
+`results/modifier_panel/WGS_EX2312012.modifier_panel.summary.json`.
 
 Subject-derived tables stay in `results/modifier_panel/` (gitignored). This document holds
 methods and, once available, aggregate counts only. This is hypothesis generation, not diagnostic
@@ -38,7 +37,9 @@ contig-by-contig (doc 01). Multiallelic records were split and indels left-norma
 explicit reference (`bcftools norm -m -any -f`, bcftools 1.22). All FILTER values were retained
 and reported.
 
-**Annotation.** Ensembl VEP 116.2 ran fully offline with the indexed GRCh38 cache (release 116),
+**Annotation.** Ensembl VEP 116.2 ran fully offline (official container
+`ensemblorg/ensembl-vep:release_116.2`, arm64, pinned by digest `sha256:5c57abdc…b8da`; the conda
+build's perl 5.32.1 segfaults in `DB_File` on the analysis workstation's macOS) with the indexed GRCh38 cache (release 116),
 the explicit reference FASTA, `--mane --mane_select --canonical --hgvs --protein --numbers
 --check_existing`. External data were joined as exact-allele custom annotations:
 - **Population frequency:** gnomAD v4.1 *joint* (exomes + genomes). Fields: `AF_joint`,
@@ -51,7 +52,9 @@ the explicit reference FASTA, `--mane --mane_select --canonical --hgvs --protein
   index, so it was downloaded once (resumable), verified against Google Cloud Storage's MD5, cut
   to the panel and deleted.
 - **SpliceAI:** 1.3.1 run locally on the panel variants only (masked scores `-M 1`, distance
-  `-D 50`, built-in GRCh38 annotation, explicit reference). Subject variants never went to an
+  `-D 50`, explicit reference). The gene annotation was built from the Ensembl 116 MANE Select
+  transcripts of the 32 panel genes (`bin/make_spliceai_annotation.py`), the same transcripts as
+  the VEP report, instead of SpliceAI's built-in GENCODE v24 table. Subject variants never went to an
   external scoring service. Software: TensorFlow 2.21.0 (conda-forge), numpy 1.26.4. The install
   was validated with a positive control: a synthetic disruption of a BUB1B exon-4 donor gave
   DS_DL = 0.99.
@@ -67,14 +70,43 @@ uncertain significance. No ACMG/AMP classification is attempted.
 
 ## Results
 
-*Pending the real run.* The pipeline writes:
-- `results/modifier_panel/<sample>.modifier_panel.all.tsv`: every panel variant with genotype,
-  depth, consequence, HGVS, gnomAD, ClinVar, SpliceAI and AlphaMissense;
-- `…rare_functional.tsv`: the filtered subset;
-- `…summary.json`: aggregate counts. These go here.
+Aggregate figures only. Per-variant detail is in `results/modifier_panel/` (gitignored).
+
+| Metric | Value |
+|---|---|
+| Panel | 32 genes, 2,870,084 bp |
+| Variants in panel | 3,325 (3,253 PASS) |
+| Consequence on MANE Select transcript | 2,328 |
+| gnomAD v4.1 joint AF annotated | 3,324 / 3,325 |
+| SpliceAI scored | 1,956 (the rest lie outside the panel genes' MANE transcript bodies, where SpliceAI does not score by design) |
+| SpliceAI max Δ ≥ 0.2 | 1 (a common variant, AF_joint 0.98) |
+| Missense with AlphaMissense score | 13 / 14 |
+| Rare (AF_joint < 0.01 or absent) | 94 (1 absent from gnomAD) |
+| Functional (non-synonymous / splice) | 34 |
+| **Rare and functional** | **5**: MVA disease genes 3, error correction/cohesion 1, APC/C 1 |
+| of which ClinVar-annotated | 3 |
+| of which failing VCF filters | 1 (the APC/C variant: low MQ/QD, skewed allele balance; low confidence) |
+| Rare and functional in checkpoint-rebalance genes (MAD2L1BP, CDC20, BUB1, BUB3, MAD2L1) | 0 |
+
+**Positive control.** Without being targeted, the panel recovered two rare BUB1B variants matching
+the publicly described Track 1 configuration: a truncating allele that ClinVar classes P/LP for
+MVA1, and an ultra-rare missense predicted damaging by AlphaMissense. Short reads can't phase them
+(about 11 kb apart, no parental data), so the biallelic configuration is inferred, not observed.
+
+**Interpretation for Track 2 (hypothesis).** No confident rare, protein-altering variant was found
+in the APC/C subunits or the checkpoint-rebalance genes. The only APC/C hit fails the caller's
+quality filters, and the remaining non-BUB1B hits are predicted or classified benign. On this
+evidence there is no germline modifier expected to dampen APC/C or stabilise the mitotic
+checkpoint complex. The residual checkpoint defect should therefore be treated as set by BUB1B
+alone when reasoning about interventions on this axis. This is a negative finding within the
+limits below, not proof of absence.
 
 ## Limitations
 
+- **One of the five rare, functional variants is a low-confidence call** (fails QD/MQ filters,
+  3 alt reads). It should be confirmed from the CRAM before it carries any weight.
+- **Frequency threshold ≠ benign.** A variant can be "rare" under the 1% cut-off and still be
+  classified benign (one here: ClinVar B/LB, 23 gnomAD homozygotes).
 - **The variant source is the distributed variant-only VCF.** A panel position without a record
   could be hom-ref or uncovered; coverage over the panel will be reported by the QC branch.
   Structural variants and CNVs in panel genes are not assessed here.

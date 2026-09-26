@@ -26,7 +26,7 @@ The data is controlled-access under a DUA. This repo holds analysis code only.
 | PGx stage 1b: Open Targets annotation (`pgx_annotate.nf`, drug list) | implemented |
 | PGx second star-allele caller: PyPGx (Stargazer successor) + Aldy comparison | implemented |
 | HLA-A/B typing | planned |
-| Modifier panel: VEP 116 + gnomAD v4.1 + ClinVar + AlphaMissense + SpliceAI | implemented; real run pending VEP cache |
+| Modifier panel: VEP 116 + gnomAD v4.1 + ClinVar + AlphaMissense + SpliceAI | implemented, run |
 | Mosaic aneuploidy (depth + BAF) | planned |
 | Genome QC (ROH, ancestry, sex, contamination, MultiQC) | planned |
 | Report (Jinja2 → Markdown + LaTeX) | planned |
@@ -44,7 +44,8 @@ hf download SageBio/mva-hackathon-2026-data \
   --repo-type dataset --local-dir data
 
 # 3. Real run (Apple Silicon: force native arm64 conda envs)
-CONDA_SUBDIR=osx-arm64 nextflow run . -profile conda -resume <session-id>
+CONDA_SUBDIR=osx-arm64 nextflow run . -profile conda,vep_docker -resume <session-id>
+#    (vep_docker: only VEP runs in Docker, because conda VEP segfaults on macOS; needs Docker Desktop)
 
 # 4. PGx stage 1b for a candidate drug list (re-run whenever candidates change)
 CONDA_SUBDIR=osx-arm64 nextflow run pgx_annotate.nf -profile conda -params-file my_drugs.yml

@@ -8,7 +8,7 @@ Status (updated 2026-09-26):
 | Lane-wise FASTQ → CRAM | implemented, run | 01 |
 | PGx stage 1a: PharmCAT + Aldy + PyPGx, reconciled | implemented, run | 03 |
 | PGx stage 1b: Open Targets annotation (`pgx_annotate.nf`) | implemented; run on example drugs only | 03 |
-| Modifier panel | implemented, stub-tested; real run pending VEP cache | 04 |
+| Modifier panel | implemented, run | 04 |
 | HLA-A/B typing | planned | — |
 | Aneuploidy burden, genome QC, report | planned | — |
 
