@@ -41,6 +41,24 @@ DPYD, UGT1A1, SLCO1B1, G6PD, VKORC1, ABCG2, RYR1, CACNA1S and IFNL3. Aldy's CYP2
 PharmCAT as an outside call, because PharmCAT does not call CYP2D6 from VCF. An Aldy call is
 passed on only when it returns a single major solution.
 
+**Second star-allele caller (Stargazer successor).** Stargazer itself can't be installed
+non-interactively: it needs an academic registration at UW and is not on bioconda, PyPI or GitHub.
+PyPGx 0.27.0 (bioconda, MIT), the same author's maintained successor that reimplements Stargazer's
+genotyping and SV/CNV calling, runs in parallel with Aldy on the same 17 genes. The steps:
+1. The PyPGx gene regions are cut from the CRAM into a BAM with the explicit reference (samtools
+   1.22.1). PyPGx's depth step has no reference option, so this avoids implicit `UR:`-based CRAM
+   decoding.
+2. `create-input-vcf`, then `prepare-depth-of-coverage` (restricted to the panel genes, because
+   PyPGx's default GSTT1 region lies on an ALT contig absent from the no-ALT reference), then
+   `compute-control-statistics` (control gene VDR).
+3. `run-ngs-pipeline --assembly GRCh38 --platform WGS` per gene, with pypgx-bundle 0.27.0
+   (sha256-verified).
+
+pandas is pinned to 2.3.3, because pandas 3.0 (new default string dtype) breaks pypgx 0.27.0 at
+`api/genotype.py:643` and the recipe does not cap pandas. `bin/compare_star_alleles.py` reports
+Aldy vs PyPGx per gene, using the same explicit nomenclature normalisation as the
+reconciliation.
+
 **Reconciliation.** For every gene, the PharmCAT and Aldy diplotypes were compared. Neither
 caller was preferred, and each comparison records its basis:
 - **Star nomenclature:** Aldy suballeles (e.g. `*4.022`) were reduced to core alleles, and
@@ -120,6 +138,13 @@ The join rules are covered by 21 synthetic tests (`tests/unit/test_pgx_join.py`)
 | Genes in the panel | 19 (17 callable by Aldy + HLA-A, HLA-B) |
 | PharmCAT vs Aldy | 14 agree, **0 disagree**, 2 not comparable (nomenclature), 1 outside call (CYP2D6), 2 no call (HLA-A/B) |
 | Aldy ambiguous calls | 0 |
+| Aldy vs PyPGx (17 genes) | 10 same, 4 same after normalisation, 2 not comparable (nomenclature), **1 different** |
+| CYP2D6 structure | Aldy and PyPGx independently call the same diplotype with a whole-gene duplication (PyPGx CNV: `WholeDup1`) |
+
+The single Aldy/PyPGx difference is a **definition-coverage** difference, not a calling
+difference. PyPGx's own input VCF carries the heterozygous variant (AD 33/19), but PyPGx 0.27.0's
+RYR1 table (49 alleles) does not define it, so PyPGx reports Reference/Reference. PharmCAT 3.4.0
+(newer CPIC RYR1 definitions) and Aldy both call it.
 | Stage 1b test run (3 example ChEMBL IDs, not the candidate set) | 3/3 drugs had PGx rows (1 via child-molecule resolution); 17/17 called genes had an asserted Open Targets match; 277 extra positions force-called; 0 strand flips; 842 level-3 rows counted as exploratory |
 
 The example drug list reproduces the evidence-level counts in the brief exactly:
@@ -132,8 +157,11 @@ fluorouracil 94 level-1A / 604 level-3, and mercaptopurine 53 / 119.
   reported as no call.
 - **Sex for chrX ploidy is a parameter** (`sample_sex = 'M'`), inferred from genotype data in
   doc 00. The QC branch will confirm it from coverage. A wrong value would mis-genotype G6PD.
-- **CYP2D6 comes from a single caller** (Aldy). Stargazer was not run, so the CYP2D6 call has no
-  independent cross-check. PharmCAT's CYP2D6 phenotype derives entirely from the Aldy call.
+- **CYP2D6:** PharmCAT's phenotype derives from the Aldy call (outside call). PyPGx gives an
+  independent SV-aware cross-check (concordant). Original Stargazer was not run (registration
+  required); PyPGx is its successor, not the identical tool.
+- **Allele-definition versions differ between callers** (PharmCAT 3.4.0 / Aldy 4.8.3 / PyPGx
+  0.27.0). A difference can reflect definition coverage rather than genotype, as for RYR1 here.
 - **Aldy licence:** free for academic/non-commercial use only.
 - **Blood only.** Germline calls from blood are expected to represent the germline. Mosaic
   aneuploidy could skew allele balance in affected cells (see the aneuploidy analysis).

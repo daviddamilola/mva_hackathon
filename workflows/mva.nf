@@ -1,11 +1,13 @@
 /*
- * Main workflow. Branches implemented so far: reference preparation, alignment, stage 1a PGx calling.
+ * Main workflow. Branches implemented so far: reference preparation, alignment, stage 1a PGx calling,
+ * modifier panel.
  * Stage 1b (Open Targets annotation) is a separate entry point: pgx_annotate.nf.
- * Planned: modifier panel, aneuploidy burden, genome QC, report (see docs/).
+ * Planned: aneuploidy burden, genome QC, report (see docs/).
  */
 include { PREPARE_REFERENCE } from '../subworkflows/local/prepare_reference'
 include { ALIGN_LANES       } from '../subworkflows/local/align_lanes'
 include { PGX_CALL          } from '../subworkflows/local/pgx_call'
+include { MODIFIER_PANEL    } from '../subworkflows/local/modifier_panel'
 
 workflow MVA {
     main:
@@ -49,6 +51,12 @@ workflow MVA {
     if (!params.skip_pgx) {
         PGX_CALL(ch_cram, PREPARE_REFERENCE.out.fasta, PREPARE_REFERENCE.out.fai, PREPARE_REFERENCE.out.dict)
         ch_versions = ch_versions.mix(PGX_CALL.out.versions)
+    }
+
+    if (!params.skip_modifier_panel) {
+        ch_vcf = Channel.of([ sample_meta, file(params.vcf, checkIfExists: true), file(params.vcf_tbi ?: "${params.vcf}.tbi", checkIfExists: true) ])
+        MODIFIER_PANEL(ch_vcf, PREPARE_REFERENCE.out.fasta, PREPARE_REFERENCE.out.fai)
+        ch_versions = ch_versions.mix(MODIFIER_PANEL.out.versions)
     }
 
     ch_versions
