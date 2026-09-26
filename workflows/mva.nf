@@ -1,9 +1,11 @@
 /*
- * Main workflow. Branches implemented so far: reference preparation and alignment.
- * Planned: PGx, modifier panel, aneuploidy burden, genome QC, report (see docs/).
+ * Main workflow. Branches implemented so far: reference preparation, alignment, stage 1a PGx calling.
+ * Stage 1b (Open Targets annotation) is a separate entry point: pgx_annotate.nf.
+ * Planned: modifier panel, aneuploidy burden, genome QC, report (see docs/).
  */
 include { PREPARE_REFERENCE } from '../subworkflows/local/prepare_reference'
 include { ALIGN_LANES       } from '../subworkflows/local/align_lanes'
+include { PGX_CALL          } from '../subworkflows/local/pgx_call'
 
 workflow MVA {
     main:
@@ -16,7 +18,14 @@ workflow MVA {
     PREPARE_REFERENCE(ref_meta, mask_bed, vcf, !params.skip_alignment)
     ch_versions = ch_versions.mix(PREPARE_REFERENCE.out.versions)
 
-    if (!params.skip_alignment) {
+    def sample_meta = [ id: params.sample_id, sex: params.sample_sex ]
+
+    if (params.cram) {
+        // pre-existing CRAM (e.g. from an earlier run); VALIDATE_CRAM_REF still checks it
+        ch_cram = Channel.of([ sample_meta,
+                               file(params.cram, checkIfExists: true),
+                               file(params.crai ?: "${params.cram}.crai", checkIfExists: true) ])
+    } else if (!params.skip_alignment) {
         ch_lanes = Channel
             .fromPath(params.lanes, checkIfExists: true)
             .splitCsv(header: true, strip: true)
@@ -32,6 +41,14 @@ workflow MVA {
             PREPARE_REFERENCE.out.bwa
         )
         ch_versions = ch_versions.mix(ALIGN_LANES.out.versions)
+        ch_cram = ALIGN_LANES.out.cram.map { meta, cram, crai -> [ sample_meta, cram, crai ] }
+    } else {
+        ch_cram = Channel.empty()
+    }
+
+    if (!params.skip_pgx) {
+        PGX_CALL(ch_cram, PREPARE_REFERENCE.out.fasta, PREPARE_REFERENCE.out.fai, PREPARE_REFERENCE.out.dict)
+        ch_versions = ch_versions.mix(PGX_CALL.out.versions)
     }
 
     ch_versions
