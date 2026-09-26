@@ -103,10 +103,16 @@ with gzip.open(a.vcf, "rt") as fh:
 
         chosen, basis = pick(csqs)
         cons = chosen.get("Consequence", "")
-        # SpliceAI (custom VCF annotation, field like SpliceAI_SpliceAI: ALLELE|SYMBOL|DS_AG|DS_AL|DS_DG|DS_DL|...)
-        sai_raw = next((v for k, v in chosen.items() if k.lower().startswith("spliceai") and v), "")
-        sai_scores = [fnum(x) for s in sai_raw.split("&") for x in s.split("|")[2:6]] if sai_raw else []
+        # SpliceAI custom annotation lives in CSQ key 'SpliceAI_SpliceAI' (key 'SpliceAI' alone is the
+        # custom file's ID column). VEP replaces the '|' inside the value with '&', so each entry is
+        # 10 '&'-separated fields: ALLELE, SYMBOL, DS_AG, DS_AL, DS_DG, DS_DL, DP_AG, DP_AL, DP_DG, DP_DL;
+        # several entries (one per overlapping gene) are concatenated.
+        sai_raw = chosen.get("SpliceAI_SpliceAI", "") or ""
+        toks = [t for t in re.split(r"[&|,]", sai_raw) if t != ""]
+        entries = [toks[i:i + 10] for i in range(0, len(toks) - len(toks) % 10, 10)]
+        sai_scores = [fnum(x) for e in entries for x in e[2:6]]
         sai_max = max([x for x in sai_scores if x is not None], default=None)
+        sai_raw = " ; ".join("|".join(e) for e in entries)
         af = fnum(chosen.get("gnomAD_joint_AF_joint"))
         functional_csq = any(c in FUNCTIONAL for c in cons.split("&"))
         functional_splice = sai_max is not None and sai_max >= a.spliceai_min

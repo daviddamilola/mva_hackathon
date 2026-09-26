@@ -33,7 +33,7 @@ workflow MODIFIER_PANEL {
     GNOMAD_PANEL(panel_bed)
     CLINVAR_FETCH(params.clinvar_release)
     ALPHAMISSENSE_PANEL(panel_bed)
-    SPLICEAI(PANEL_VARIANTS.out.vcf, ch_ref)
+    SPLICEAI(PANEL_VARIANTS.out.vcf, ch_ref, file(params.spliceai_annotation, checkIfExists: true))
 
     VEP_ANNOTATE(
         PANEL_VARIANTS.out.vcf.join(SPLICEAI.out.vcf),
