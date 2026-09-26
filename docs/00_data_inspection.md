@@ -112,7 +112,7 @@ contents are **not** reproduced here. Two points matter for pipeline design:
 | Analysis | From VCF alone? | Why |
 |---|---|---|
 | 1. PGx (PharmCAT) | **Partly** | This is variant-only, so a site that is absent is ambiguous: it could be hom-ref or no coverage. PharmCAT would have to assume absent = reference, and that must be flagged. A gVCF, or genotyping PharmCAT's positions from aligned reads, removes the ambiguity. |
-| 1. CYP2D6 (Aldy / Stargazer) | **No** | Both need BAM/CRAM for copy-number, SV and hybrid-allele calling. |
+| 1. CYP2D6 (Aldy / PyPGx) | **No** | Both need BAM/CRAM for copy-number, SV and hybrid-allele calling. |
 | 1. HLA-A/B | **No** | No HLA contigs; typing needs reads (OptiType, HLA-LA, T1K). |
 | 2. Modifier panel (VEP) | **Yes** | Region-restricted annotation of the VCF. |
 | 3. Aneuploidy: BAF | **Yes** | FORMAT/AD at ~2.8 M het sites. |
@@ -133,7 +133,8 @@ the VCF.
 1. **Re-align from FASTQ: yes.** Process lane by lane and delete each lane's FASTQ after it
    is aligned. See [01_reference_and_alignment.md](01_reference_and_alignment.md).
 2. **Reference:** rebuild the exact masked no-chr reference from the NCBI analysis set. See doc 01.
-3. **Annotation resources** (VEP cache, gnomAD v4, ClinVar, SpliceAI, AlphaMissense): not yet
-   downloaded.
+3. **Annotation resources:** VEP 116 offline cache (downloaded, checksum-verified); gnomAD v4.1
+   joint fetched remotely for panel regions only; ClinVar 20260923; AlphaMissense panel subset;
+   SpliceAI run locally. See [04_modifier_panel.md](04_modifier_panel.md).
 4. **Report framework: Jinja2** templates rendered from JSON summaries. This gives Markdown and
    LaTeX from one source, and missing results are reported explicitly.

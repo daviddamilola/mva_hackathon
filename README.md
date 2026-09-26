@@ -24,8 +24,9 @@ The data is controlled-access under a DUA. This repo holds analysis code only.
 | Lane-wise FASTQ → CRAM | implemented |
 | PGx stage 1a: PharmCAT (CRAM force-call) + Aldy, reconciled | implemented |
 | PGx stage 1b: Open Targets annotation (`pgx_annotate.nf`, drug list) | implemented |
+| PGx second star-allele caller: PyPGx (Stargazer successor) + Aldy comparison | implemented |
 | HLA-A/B typing | planned |
-| Modifier panel (VEP) | planned |
+| Modifier panel: VEP 116 + gnomAD v4.1 + ClinVar + AlphaMissense + SpliceAI | implemented; real run pending VEP cache |
 | Mosaic aneuploidy (depth + BAF) | planned |
 | Genome QC (ROH, ancestry, sex, contamination, MultiQC) | planned |
 | Report (Jinja2 → Markdown + LaTeX) | planned |
@@ -49,6 +50,9 @@ CONDA_SUBDIR=osx-arm64 nextflow run . -profile conda -resume <session-id>
 CONDA_SUBDIR=osx-arm64 nextflow run pgx_annotate.nf -profile conda -params-file my_drugs.yml
 #    my_drugs.yml:  drugs: [CHEMBL185, ...]   (see assets/drugs_example.yml)
 
+# modifier panel needs the verified VEP cache once (resumable, checksum-verified, ~28 GB):
+bin/fetch_vep_cache.sh homo_sapiens GRCh38 116 refs/vep
+
 # unit tests for the Open Targets join rules (synthetic data)
 python3 tests/unit/test_pgx_join.py
 ```
@@ -66,6 +70,7 @@ through `hf auth login` or `HF_TOKEN`.
 - [01 — Reference reconstruction and re-alignment](docs/01_reference_and_alignment.md)
 - [02 — Pipeline design](docs/02_pipeline_design.md)
 - [03 — Pharmacogenomics](docs/03_pharmacogenomics.md)
+- [04 — Modifier panel](docs/04_modifier_panel.md)
 
 ## Acknowledgement
 
