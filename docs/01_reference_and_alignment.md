@@ -91,6 +91,34 @@ Why these choices:
   warns if this setting is missing. The docker/singularity profiles use pinned biocontainers where one exists. Wave
   builds the fetch+align image from its pinned `environment.yml`.
 
+### Provenance exception: lane 3 helper tools (2026-09-26)
+
+Lane 3 (the first lane processed) ran with the **pinned bwa 0.7.19**, but `samtools fixmate`
+and `samtools sort` came from **Homebrew samtools 1.21** instead of the pinned 1.22.1, and the
+download used Homebrew `hf` 2.0.0 instead of huggingface_hub 0.35.3. The CRAM `@PG` header
+records this.
+
+- **Cause:** the launching shell had conda `base` active. Activating a task env on top of an
+  active env replaces base's PATH entry in place. Base sits after `/opt/homebrew/bin` in PATH,
+  so Homebrew binaries shadowed the env's. bwa wasn't affected because Homebrew has no bwa.
+- **Impact:** alignments come from bwa, which was the pinned version. `fixmate -m` and
+  coordinate `sort` behave the same in 1.21 and 1.22.1. The download was verified by sha256
+  regardless of client. So the lane 3 CRAM is valid, but its helper-tool versions differ from
+  the other lanes.
+- **Fix:** the conda profile now sets
+  `process.beforeScript = 'unset CONDA_SHLVL CONDA_PREFIX CONDA_DEFAULT_ENV CONDA_PROMPT_MODIFIER'`,
+  which was confirmed to run before activation. Lanes 1, 2 and 4 use the pinned env. Lane 3 was
+  kept via `-resume`; the beforeScript change does not alter task hashes.
+- **Also affected (from each task's `versions.yml`):**
+  - `PREPARE_FASTA`: system curl 8.7.1 instead of 8.14.1. bedtools 2.31.1 was pinned
+    correctly. The download was md5-verified.
+  - `SAMTOOLS_FAIDX_DICT`: samtools 1.21 instead of 1.22.1.
+  - `CHECK_CONTIGS`: Homebrew python 3.14.7 instead of 3.12.11.
+  - `BWA_INDEX`: pinned bwa 0.7.19, so not affected.
+
+  None of these change the outputs: a byte-identical download, a FASTA index, and a
+  header comparison. They are recorded here for exact provenance.
+
 ## Results
 
 | Metric | Value |
