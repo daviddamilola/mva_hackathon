@@ -1,0 +1,5 @@
+name: python
+channels:
+  - conda-forge
+dependencies:
+  - conda-forge::python=3.12.11

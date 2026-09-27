@@ -1,6 +1,6 @@
 /*
  * PharmCAT on the force-called VCF: rename to chr, preprocess against our reference, then match,
- * phenotype and report with Aldy outside calls (e.g. CYP2D6).
+ * phenotype and report with outside calls: Aldy (CYP2D6) and concordant T1K/OptiType HLA-A/B.
  * Missing-to-ref options are deliberately NOT used: every position is genotyped from the CRAM.
  */
 process PHARMCAT_RUN {
@@ -13,7 +13,7 @@ process PHARMCAT_RUN {
         'quay.io/biocontainers/pharmcat3:3.4.0--py313h106432d_0' }"
 
     input:
-    tuple val(meta), path(vcf), path(csi), path(outside_calls)
+    tuple val(meta), path(vcf), path(csi), path(outside_calls, stageAs: 'outside_??.tsv')
     path chr_map
     tuple path(ref_chr), path(ref_chr_fai), path(ref_chr_gzi)
 
@@ -26,7 +26,6 @@ process PHARMCAT_RUN {
     path "versions.yml"                               , emit: versions
 
     script:
-    def outside = "-po ${outside_calls}"
     """
     set -o pipefail
     awk '{print \$2, \$1}' ${chr_map} > nochr_to_chr.txt
@@ -37,8 +36,9 @@ process PHARMCAT_RUN {
     pharmcat_vcf_preprocessor -vcf input.chr.vcf.gz -refFna ${ref_chr} -o pre -bf ${meta.id}
     mv pre/${meta.id}.preprocessed.vcf.bgz .
 
-    # an empty outside-call file is valid input for PharmCAT
-    pharmcat -vcf ${meta.id}.preprocessed.vcf.bgz ${outside} -o . -bf ${meta.id} \\
+    # outside calls from every caller (Aldy CYP2D6, concordant HLA-A/B); an empty file is valid input
+    cat outside_*.tsv | awk 'NF' > outside_calls.tsv
+    pharmcat -vcf ${meta.id}.preprocessed.vcf.bgz -po outside_calls.tsv -o . -bf ${meta.id} \\
         -reporterJson -reporterHtml -rs ${params.pharmcat_reporter_sources}
 
     cat <<-END_VERSIONS > versions.yml

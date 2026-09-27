@@ -5,6 +5,8 @@
  *   ALDY_GENOTYPE (per gene) -> ALDY_PARSE (outside calls for PharmCAT, e.g. CYP2D6)
  *   PGX_RECONCILE (PharmCAT vs Aldy per gene; disagreements reported, neither caller preferred)
  *   PYPGX_* (Stargazer successor, in parallel with Aldy) -> STAR_ALLELE_COMPARE (Aldy vs PyPGx)
+ *   HLA_READS -> T1K_RUN (IPD-IMGT/HLA pinned) + OPTITYPE_RUN -> HLA_RECONCILE: concordant 2-field
+ *   HLA-A/B passed to PharmCAT as outside calls
  */
 include { VALIDATE_CRAM_REF  } from '../../../modules/local/validate_cram_ref'
 include { PHARMCAT_SITES     } from '../../../modules/local/pharmcat_sites'
@@ -18,6 +20,11 @@ include { PYPGX_BUNDLE        } from '../../../modules/local/pypgx_bundle'
 include { PYPGX_PREPARE       } from '../../../modules/local/pypgx_prepare'
 include { PYPGX_GENOTYPE      } from '../../../modules/local/pypgx_genotype'
 include { STAR_ALLELE_COMPARE } from '../../../modules/local/star_allele_compare'
+include { HLA_READS           } from '../../../modules/local/hla_reads'
+include { T1K_REFERENCE       } from '../../../modules/local/t1k_reference'
+include { T1K_RUN             } from '../../../modules/local/t1k_run'
+include { OPTITYPE_RUN        } from '../../../modules/local/optitype_run'
+include { HLA_RECONCILE       } from '../../../modules/local/hla_reconcile'
 
 workflow PGX_CALL {
     take:
@@ -40,11 +47,26 @@ workflow PGX_CALL {
     ALDY_GENOTYPE(ch_valid_cram.combine(ch_genes), ch_ref)
     ALDY_PARSE(ALDY_GENOTYPE.out.aldy.groupTuple())
 
+    // HLA typing: two independent callers, only concordant 2-field HLA-A/B go to PharmCAT
+    ch_hla_versions = Channel.empty()
+    if (!params.skip_hla) {
+        HLA_READS(ch_valid_cram, ch_ref)
+        T1K_REFERENCE()
+        T1K_RUN(HLA_READS.out.fastq, T1K_REFERENCE.out.ref)
+        OPTITYPE_RUN(HLA_READS.out.fastq)
+        HLA_RECONCILE(T1K_RUN.out.genotype.join(OPTITYPE_RUN.out.result))
+        ch_hla_outside = HLA_RECONCILE.out.outside
+        ch_hla_versions = ch_hla_versions.mix(HLA_READS.out.versions, T1K_RUN.out.versions, OPTITYPE_RUN.out.versions, HLA_RECONCILE.out.versions)
+    } else {
+        ch_hla_outside = ALDY_PARSE.out.calls.map { meta, j, o -> [ meta, [] ] }
+    }
+
     PHARMCAT_REFERENCE(ch_ref)
     PHARMCAT_RUN(
         PGX_FORCE_CALL.out.vcf
             .join(ALDY_PARSE.out.calls)
-            .map { meta, vcf, csi, aldy_json, outside -> [ meta, vcf, csi, outside ] },
+            .join(ch_hla_outside)
+            .map { meta, vcf, csi, aldy_json, aldy_outside, hla_outside -> [ meta, vcf, csi, [ aldy_outside ] + (hla_outside ? [ hla_outside ] : []) ] },
         PHARMCAT_SITES.out.chr_map,
         PHARMCAT_REFERENCE.out.fasta
     )
@@ -73,7 +95,7 @@ workflow PGX_CALL {
                                                   STAR_ALLELE_COMPARE.out.versions)
     }
 
-    ch_versions = ch_pypgx_versions.mix(
+    ch_versions = ch_pypgx_versions.mix(ch_hla_versions,
         VALIDATE_CRAM_REF.out.versions,
         PHARMCAT_SITES.out.versions,
         PGX_FORCE_CALL.out.versions,

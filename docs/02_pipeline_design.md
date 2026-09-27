@@ -9,7 +9,7 @@ Status (updated 2026-09-26):
 | PGx stage 1a: PharmCAT + Aldy + PyPGx, reconciled | implemented, run | 03 |
 | PGx stage 1b: Open Targets annotation (`pgx_annotate.nf`) | implemented; run on example drugs only | 03 |
 | Modifier panel | implemented, run | 04 |
-| HLA-A/B typing | planned | — |
+| HLA typing (T1K + OptiType) | implemented, run | 03 |
 | Aneuploidy burden | implemented, run | 05 |
 | Panel CNV/SV (Delly + exon depth) | implemented, run | 05 |
 | Genome QC, report | planned | — |

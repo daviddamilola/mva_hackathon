@@ -59,6 +59,22 @@ pandas is pinned to 2.3.3, because pandas 3.0 (new default string dtype) breaks 
 Aldy vs PyPGx per gene, using the same explicit nomenclature normalisation as the
 reconciliation.
 
+**HLA typing.** The reference has no HLA/ALT contigs, so the reads used were:
+- the MHC region (6:28,510,120–33,480,577);
+- unplaced unmapped reads;
+
+decoded from the CRAM with the explicit reference, mates re-paired (samtools 1.22.1): 902,888
+read pairs. Two independent callers typed them:
+- **T1K 1.0.10:** `--preset hla-wgs`, with a reference built by `t1k-build.pl` from IPD-IMGT/HLA
+  **3.65.0**. The `hla.dat.zip` was pinned by GitHub commit `5b915f2` and verified by sha256.
+- **OptiType 1.5.0:** class I, DNA mode, bundled reference, RazerS3 3.5.12 mapping, CBC 2.10.13 ILP
+  solver.
+
+Calls were compared at 2-field (protein) resolution with allele order canonicalised
+(`bin/hla_reconcile.py`). HLA-A and HLA-B are passed to PharmCAT as outside calls **only when both
+callers agree**; a discordant gene is reported and not passed. This rule was checked with a
+synthetic discordance. Class II loci are T1K-only and reported as single-caller.
+
 **Reconciliation.** For every gene, the PharmCAT and Aldy diplotypes were compared. Neither
 caller was preferred, and each comparison records its basis:
 - **Star nomenclature:** Aldy suballeles (e.g. `*4.022`) were reduced to core alleles, and
@@ -138,6 +154,8 @@ The join rules are covered by 21 synthetic tests (`tests/unit/test_pgx_join.py`)
 | Genes in the panel | 19 (17 callable by Aldy + HLA-A, HLA-B) |
 | PharmCAT vs Aldy | 14 agree, **0 disagree**, 2 not comparable (nomenclature), 1 outside call (CYP2D6), 2 no call (HLA-A/B) |
 | Aldy ambiguous calls | 0 |
+| HLA class I (T1K vs OptiType, 2-field) | 3/3 genes concordant (HLA-A, -B, -C); HLA-A and HLA-B passed to PharmCAT |
+| PGx genes with a call after HLA typing | 19/19 (14 agree, 2 not comparable, 3 outside calls: CYP2D6, HLA-A, HLA-B) |
 | Aldy vs PyPGx (17 genes) | 10 same, 4 same after normalisation, 2 not comparable (nomenclature), **1 different** |
 | CYP2D6 structure | Aldy and PyPGx independently call the same diplotype with a whole-gene duplication (PyPGx CNV: `WholeDup1`) |
 
@@ -152,9 +170,11 @@ fluorouracil 94 level-1A / 604 level-3, and mercaptopurine 53 / 119.
 
 ## Limitations
 
-- **HLA-A/B not called.** PharmCAT needs HLA as an outside call, and HLA typing is not
-  implemented yet. HLA-dependent recommendations (e.g. abacavir, carbamazepine, allopurinol) are
-  reported as no call.
+- **HLA resolution and scope.** Typing is at 2-field resolution from short reads. Class II is
+  single-caller (T1K), and so are rare or novel alleles absent from either reference.
+  Clinically, HLA risk-allele testing (e.g. HLA-B\*57:01 before abacavir) is done with a validated
+  assay; this research call does not replace it. OptiType's bundled reference is older than
+  IPD-IMGT/HLA 3.65.0.
 - **Sex for chrX ploidy is a parameter** (`sample_sex = 'M'`), inferred from genotype data in
   doc 00. The QC branch will confirm it from coverage. A wrong value would mis-genotype G6PD.
 - **CYP2D6:** PharmCAT's phenotype derives from the Aldy call (outside call). PyPGx gives an

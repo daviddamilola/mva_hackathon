@@ -25,7 +25,7 @@ The data is controlled-access under a DUA. This repo holds analysis code only.
 | PGx stage 1a: PharmCAT (CRAM force-call) + Aldy, reconciled | implemented |
 | PGx stage 1b: Open Targets annotation (`pgx_annotate.nf`, drug list) | implemented |
 | PGx second star-allele caller: PyPGx (Stargazer successor) + Aldy comparison | implemented |
-| HLA-A/B typing | planned |
+| HLA typing: T1K + OptiType, concordant HLA-A/B → PharmCAT | implemented, run |
 | Modifier panel: VEP 116 + gnomAD v4.1 + ClinVar + AlphaMissense + SpliceAI | implemented, run |
 | Mosaic aneuploidy (mosdepth LRR + BAF model, per-arm cell fraction) | implemented, run |
 | Panel-gene CNV/SV (Delly + exon depth) | implemented, run |
