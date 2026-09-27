@@ -23,14 +23,14 @@ The data is controlled-access under a DUA. This repo holds analysis code only.
 | Reference rebuild + contig check | implemented |
 | Lane-wise FASTQ → CRAM | implemented |
 | PGx stage 1a: PharmCAT (CRAM force-call) + Aldy, reconciled | implemented |
-| PGx stage 1b: Open Targets annotation (`pgx_annotate.nf`, drug list) | implemented |
+| PGx stage 1b: Open Targets annotation (`pgx_annotate.nf`, named drug list) | implemented; awaits Track 2 candidate list |
 | PGx second star-allele caller: PyPGx (Stargazer successor) + Aldy comparison | implemented |
 | HLA typing: T1K + OptiType, concordant HLA-A/B → PharmCAT | implemented, run |
 | Modifier panel: VEP 116 + gnomAD v4.1 + ClinVar + AlphaMissense + SpliceAI | implemented, run |
 | Mosaic aneuploidy (mosdepth LRR + BAF model, per-arm cell fraction) | implemented, run |
 | Panel-gene CNV/SV (Delly + exon depth) | implemented, run |
-| Genome QC (ROH, ancestry, sex, contamination, MultiQC) | planned |
-| Report (Jinja2 → Markdown + LaTeX) | planned |
+| Genome QC (ROH, ancestry, sex, contamination, MultiQC) | implemented, run |
+| Report (Jinja2 → Markdown + LaTeX + PDF) and provenance record | implemented, run |
 
 ## Running
 
@@ -51,7 +51,8 @@ CONDA_SUBDIR=osx-arm64 nextflow run . -profile conda,macos_docker -resume <sessi
 
 # 4. PGx stage 1b for a candidate drug list (re-run whenever candidates change)
 CONDA_SUBDIR=osx-arm64 nextflow run pgx_annotate.nf -profile conda -params-file my_drugs.yml
-#    my_drugs.yml:  drugs: [CHEMBL185, ...]   (see assets/drugs_example.yml)
+#    my_drugs.yml:  drug_list_label: track2_candidates_v1
+#                   drugs: [CHEMBL185, ...]   (see assets/drugs_example.yml)
 
 # modifier panel needs the verified VEP cache once (resumable, checksum-verified, ~28 GB):
 bin/fetch_vep_cache.sh homo_sapiens GRCh38 116 refs/vep
@@ -76,6 +77,8 @@ through `hf auth login` or `HF_TOKEN`.
 - [03 — Pharmacogenomics](docs/03_pharmacogenomics.md)
 - [04 — Modifier panel](docs/04_modifier_panel.md)
 - [05 — Mosaic aneuploidy burden](docs/05_aneuploidy_burden.md)
+- [06 — Genome QC](docs/06_genome_qc.md)
+- [07 — Report and provenance](docs/07_report_and_provenance.md)
 
 ## Acknowledgement
 

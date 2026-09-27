@@ -1,0 +1,7 @@
+PharmCAT: Sangkuhl K et al., Clin Pharmacol Ther 2020. CPIC guidelines: cpicpgx.org.
+Aldy: Numanagić I et al., Nat Commun 2018. PyPGx/Stargazer: Lee SB et al., Genet Med 2019; PyPGx documentation.
+T1K: Song L et al., Genome Res 2023. OptiType: Szolek A et al., Bioinformatics 2014. IPD-IMGT/HLA: Barker DJ et al., Nucleic Acids Res 2023.
+VEP: McLaren W et al., Genome Biol 2016. gnomAD v4.1: gnomad.broadinstitute.org (release 4.1). ClinVar: Landrum MJ et al., Nucleic Acids Res 2018. SpliceAI: Jaganathan K et al., Cell 2019. AlphaMissense: Cheng J et al., Science 2023. MANE: Morales J et al., Nature 2022.
+Delly: Rausch T et al., Bioinformatics 2012. mosdepth: Pedersen BS & Quinlan AR, Bioinformatics 2018. Umap: Karimzadeh M et al., Nucleic Acids Res 2018. ENCODE blacklist: Amemiya HM et al., Sci Rep 2019.
+MoChA approach: Loh PR et al., Nature 2018. somalier: Pedersen BS et al., Genome Med 2020. VerifyBamID2: Zhang F et al., Genome Res 2020. bcftools roh: Narasimhan V et al., Bioinformatics 2016. MultiQC: Ewels P et al., Bioinformatics 2016.
+BWA-MEM: Li H, arXiv 2013. SAMtools/BCFtools: Danecek P et al., GigaScience 2021. Nextflow: Di Tommaso P et al., Nat Biotechnol 2017. Open Targets Platform: Ochoa D et al., Nucleic Acids Res 2023.

@@ -1,0 +1,186 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[margin=2cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{booktabs,longtable,array,graphicx,xcolor,hyperref}
+\usepackage[font=small]{caption}
+\setlength{\parskip}{0.5em}\setlength{\parindent}{0pt}
+\title{MVA Hackathon 2026, Track 2: pharmacogenomics, modifier genotypes and mosaic aneuploidy burden}
+\author{Sample \texttt{ {{- sample | tex -}} }}
+\date{Generated {{ prov.generated_utc | tex }} \quad pipeline {{ prov.pipeline.name | tex }} {{ prov.pipeline.version | tex }} @ \texttt{ {{- prov.pipeline.git_commit | tex -}} }}
+\begin{document}
+\maketitle
+
+\noindent\fcolorbox{black}{yellow!10}{\parbox{\dimexpr\linewidth-2\fboxsep}{\textbf{Research hypothesis, not a treatment recommendation.} Nothing in this report should change the child's care without clinical-grade confirmation and review by their clinical team.}}
+
+{% if missing %}
+\textbf{Missing inputs:} {{ missing | join(', ') | tex }}. Sections that depend on them say ``not available''.
+{% endif %}
+
+\section{Summary}
+\begin{itemize}
+{% if pgx_summary %}
+\item \textbf{Pharmacogenomics:} {{ pgx_rows | length }} genes profiled. PharmCAT vs Aldy: {% for k, v in pgx_summary.agreement_counts.items() %}{{ v }} {{ k | tex }}{{ ", " if not loop.last }}{% endfor %}; disagreements: {{ (pgx_summary.disagreements | join(', ')) | tex if pgx_summary.disagreements else 'none' }}. CPIC/DPWG annotations evaluated: {{ n_guidelines }}, of which \textbf{ {{- actionable | length -}} } carry a dose-adjustment or alternative-drug flag.
+{% else %}
+\item \textbf{Pharmacogenomics:} not available.
+{% endif %}
+{% if modsum %}
+\item \textbf{Modifier panel:} {{ modsum.variants_total }} variants in {{ modsum.panel_genes }} genes; \textbf{ {{- modsum.rare_functional -}} } rare and functional ({{ modsum.rare_functional_genes | join(', ') | tex }}).
+{% else %}
+\item \textbf{Modifier panel:} not available.
+{% endif %}
+{% if cnv %}
+\item \textbf{Panel structural variants / copy number:} {{ cnv.sv_supported | length }} supported SVs; exon-run CN candidates (unconfirmed; need orthogonal confirmation): {{ (cnv.genes_with_cn_call | join(', ')) | tex if cnv.genes_with_cn_call else 'none' }}.
+{% endif %}
+{% if aneu %}
+\item \textbf{Mosaic aneuploidy:} {{ events | length }} arm-level events of {{ aneu.arms_tested }} arms tested{% if focal %} (focal imbalance, not arm-wide: {{ focal | map(attribute='arm') | join(', ') | tex }}){% endif %}. Median detection limit: gain {{ aneu.detection_limit_f_median_across_arms.gain | pct | tex }}, loss {{ aneu.detection_limit_f_median_across_arms.loss | pct | tex }}, CN-LOH {{ aneu.detection_limit_f_median_across_arms.cnloh | pct | tex }} of cells.
+{% else %}
+\item \textbf{Mosaic aneuploidy:} not available.
+{% endif %}
+{% if qc %}
+\item \textbf{QC:} {% for c in qc_checks %}{{ c.check | tex }}: \textbf{ {{- c.status | tex -}} }{{ "; " if not loop.last }}{% endfor %}.
+{% endif %}
+\end{itemize}
+
+\section{Methods}
+{% filter tex %}{% include 'methods.j2' %}{% endfilter %}
+
+\section{Results}
+\subsection{Pharmacogenomics}
+\begin{small}
+\begin{longtable}{>{\raggedright}p{1.6cm}>{\raggedright}p{3.2cm}>{\raggedright}p{3.6cm}p{1.1cm}>{\raggedright}p{2.2cm}>{\raggedright\arraybackslash}p{2.8cm}}
+\toprule Gene & Diplotype & Phenotype & Activity & Call source & PharmCAT vs Aldy \\ \midrule \endhead
+{% for r in pgx_rows %}
+{{ r.gene | tex }} & {{ r.diplotype | tex }} & {{ r.phenotype | tex }} & {{ r.activity | tex }} & {{ r.source | tex }} & {{ r.agreement | tex }}{% if r.undocumented %} (undocumented variation){% endif %} \\
+{% else %}
+\multicolumn{6}{l}{not available} \\
+{% endfor %}
+\bottomrule
+\end{longtable}
+\end{small}
+
+\textbf{Aldy vs PyPGx (Stargazer successor):} {% if star_counts %}{% for k, v in star_counts.items() %}{{ v }} {{ k | tex }}{{ ", " if not loop.last }}{% endfor %}.{% else %}not available.{% endif %}
+{% for r in star_rows if r.status == 'different' %}
+{{ r.gene | tex }}: Aldy \texttt{ {{- r.aldy | tex -}} } vs PyPGx \texttt{ {{- r.pypgx | tex -}} }.
+{% endfor %}
+
+\textbf{HLA (T1K vs OptiType, 2-field):} {% if hla %}{% for g, s in hla.class_I_agreement.items() %}{{ g | tex }} {{ s | tex }}{{ ", " if not loop.last }}{% endfor %}; passed to PharmCAT: {{ (hla.passed_to_pharmcat | join(', ')) | tex or 'none' }}.{% else %}not available.{% endif %}
+
+\textbf{Drugs with a dose-adjustment or alternative-drug recommendation (CPIC/DPWG):}
+{% if actionable %}
+\begin{small}
+\begin{longtable}{>{\raggedright}p{2.2cm}p{1.1cm}>{\raggedright}p{2cm}>{\raggedright}p{2.2cm}p{1.4cm}>{\raggedright\arraybackslash}p{6cm}}
+\toprule Drug & Source & Gene(s) & Flag & Strength & Recommendation \\ \midrule \endhead
+{% for x in actionable %}
+{{ x.drug | tex }} & {{ x.source | tex }} & {{ x.genes | tex }} & {{ x.flag | tex }} & {{ x.classification | tex }} & {{ x.recommendation | replace('\n', ' ') | tex }} \\
+{% endfor %}
+\bottomrule
+\end{longtable}
+\end{small}
+{% else %}
+None of the {{ n_guidelines }} evaluated guideline annotations carries a dose-adjustment or alternative-drug flag for this genotype.
+{% endif %}
+
+{% if ot_status in ('reported', 'example') %}
+\textbf{Open Targets candidate-drug verdicts (stage 1b), drug list \texttt{ {{- ot_sum.drug_list.label | tex -}} } ({{ ot_sum.drug_list.chembl_ids_queried | join(', ') | tex }}){% if ot_status == 'example' %}. EXAMPLE LIST: this checks the join logic and is not the Track 2 candidate set{% endif %}:} join coverage: {{ ot_cov | tex }}. Flags: {{ ot_flags | tex }}. Level-3 rows counted as exploratory: {{ ot_sum.level3_rows_exploratory_total }}. Full table: \texttt{pgx/open\_targets/ {{- sample | tex -}} .pgx\_ot.verdicts.tsv}.
+{% elif ot_status == 'unrecorded' %}
+\textbf{Open Targets candidate-drug verdicts (stage 1b):} withheld. Stage-1b output exists in this directory, but it does not record which drug list produced it. Rerun \texttt{pgx\_annotate.nf} with \texttt{drug\_list\_label} set.
+{% else %}
+\textbf{Open Targets candidate-drug verdicts (stage 1b):} not run for this output (requires the Track 2 candidate list).
+{% endif %}
+
+\subsection{Modifier genotypes in the mechanistic panel}
+{% if modsum %}
+{{ modsum.variants_total }} variants ({{ modsum.variants_pass }} PASS); {{ modsum.rare }} rare; {{ modsum.functional }} functional; \textbf{ {{- modsum.rare_functional -}} rare and functional}:
+\begin{small}
+\begin{longtable}{>{\raggedright}p{1.3cm}>{\raggedright}p{2.6cm}>{\raggedright}p{1.6cm}p{1.1cm}>{\raggedright}p{2.2cm}>{\raggedright}p{2.2cm}p{1.4cm}>{\raggedright}p{1.8cm}p{0.9cm}>{\raggedright\arraybackslash}p{1.6cm}}
+\toprule Gene & Variant & Filter & Zyg. & Consequence & HGVSp & gnomAD AF & ClinVar & SpliceAI & AlphaMissense \\ \midrule \endhead
+{% for r in modrf %}
+{{ r.gene | tex }} & {{ (r.chrom ~ ':' ~ r.pos ~ ' ' ~ r.ref ~ '>' ~ r.alt) | tex }} & {{ r.filter | tex }} & {{ r.zygosity | tex }} & {{ r.consequence | tex }} & {{ r.hgvsp | tex }} & {{ (r.gnomad_af_joint or 'absent') | tex }} & {{ (r.clinvar_significance or '-') | tex }} & {{ (r.spliceai_max_delta or '-') | tex }} & {{ (r.alphamissense_score or '-') | tex }} {{ r.alphamissense_class | tex }} \\
+{% endfor %}
+\bottomrule
+\end{longtable}
+\end{small}
+{% else %}
+Not available.
+{% endif %}
+{% if cnv %}
+\textbf{Structural variants and copy number (panel genes):} {{ cnv.sv_touching_panel }} Delly calls touch the panel ({{ cnv.sv_touching_panel_high_tier }} high tier, {{ cnv.sv_contradicted_by_depth }} contradicted by depth); supported: {{ (cnv.sv_supported | join('; ')) | tex if cnv.sv_supported else 'none' }}. Exon noise $\sigma$ = {{ cnv.exon_noise_sigma_log2_at_150bp | fmt | tex }} log2 at 150 bp; median gene CN {{ cnv.gene_cn_median | fmt | tex }}.
+{% for g in genecn_calls %}
+{{ g.gene | tex }}: {{ g.cn_call | tex }} (candidate; requires orthogonal confirmation).
+{% endfor %}
+{% endif %}
+
+\subsection{Mosaic aneuploidy burden}
+{% if aneu %}
+Internal control: chrX non-PAR LRR {{ aneu.internal_control_chrX_nonPAR_lrr | fmt | tex }} (expected {{ aneu.internal_control_expected }}). {{ aneu.het_sites_used }} heterozygous sites (median depth {{ aneu.het_depth_median | fmt | tex }}x), {{ aneu.bins_kept }} bins.
+\begin{small}
+\begin{longtable}{p{0.9cm}p{0.9cm}p{1.4cm}p{1.2cm}p{1.4cm}>{\raggedright}p{3.4cm}>{\raggedright}p{3.4cm}p{1.6cm}}
+\toprule Arm & Bins & Het sites & LRR & d & Status & Cell fraction (95\% CI) & Det.\ limit \\ \midrule \endhead
+{% for r in arm_rows %}
+{{ r.arm | tex }} & {{ r.n_bins }} & {{ r.n_het_sites }} & {{ r.lrr_mean | fmt | tex }} & {{ r.baf_d | fmt | tex }} & {{ r.status | tex }} & {% if r.cell_fraction is not none %}{{ r.cell_fraction | pct | tex }} [{{ r.cell_fraction_ci95[0] | pct | tex }}, {{ r.cell_fraction_ci95[1] | pct | tex }}] ({{ r.best_model | tex }}){% else %}--{% endif %} & {{ r.detection_limit_f.loss | pct | tex }} \\
+{% endfor %}
+\bottomrule
+\end{longtable}
+\end{small}
+{% for key in ['genome', 'perchrom', 'burden'] %}{% if figs[key] %}
+\begin{figure}[htbp]\centering\includegraphics[width=\linewidth{% if key == 'perchrom' %},height=0.85\textheight,keepaspectratio{% endif %}]{ {{- figs[key].path -}} }\caption{ {{- figs[key].label | tex -}} }\end{figure}
+{% endif %}{% endfor %}
+\textbf{Caveats (from the analysis output):}
+\begin{itemize}
+{% for c in aneu.caveats %}
+\item {{ c | tex }}
+{% endfor %}
+\end{itemize}
+{% else %}
+Not available.
+{% endif %}
+
+\subsection{Genome context and QC}
+{% if qc %}
+\begin{small}
+\begin{longtable}{>{\raggedright}p{5cm}p{2.4cm}p{1.2cm}>{\raggedright\arraybackslash}p{7cm}}
+\toprule Check & Value & Status & Rule \\ \midrule \endhead
+{% for c in qc_checks %}
+{{ c.check | tex }} & {{ c.value | fmt | tex }} & {{ c.status | tex }} & {{ c.rule | tex }} \\
+{% endfor %}
+\bottomrule
+\end{longtable}
+\end{small}
+Ancestry: {{ qc.ancestry.predicted | tex }} ({{ qc.ancestry.reference | tex }}). Sex: {{ qc.sex_inferred.sex | tex }} (X/autosome depth {{ qc.sex_inferred.x_to_autosome_depth | fmt | tex }}, X het sites {{ qc.sex_inferred.x_het_sites | fmt | tex }}, Y depth {{ qc.sex_inferred.y_depth | fmt | tex }}, chrX LRR {{ qc.sex_inferred.chrX_lrr | fmt | tex }}). Reads {{ '{:,}'.format(qc.reads_total) }}; primary mapped {{ qc.primary_mapped_pct }}\%; duplicates {{ qc.duplicate_pct }}\%; mean autosomal depth {{ qc.mean_depth_autosomes }}x. ROH: $F_{ROH}$($\geq$1.5 Mb) = {{ qc.roh.F_ROH['>=1.5Mb'].F_ROH }}, longest {{ qc.roh.longest_roh.mb if qc.roh.longest_roh else 'n/a' }} Mb.
+{% else %}
+Not available.
+{% endif %}
+
+\section{Limitations}
+{% filter tex %}{% include 'limitations.j2' %}{% endfilter %}
+
+\section{Provenance}
+Pipeline {{ prov.pipeline.name | tex }} {{ prov.pipeline.version | tex }}, git \texttt{ {{- prov.pipeline.git_commit | tex -}} }{% if prov.pipeline.git_dirty %} (uncommitted changes){% endif %}, Nextflow {{ prov.pipeline.nextflow_version | tex }}, session \texttt{ {{- prov.pipeline.session_id | tex -}} }, profile \texttt{ {{- prov.pipeline.profile | tex -}} }, run started {{ prov.pipeline.run_start | tex }}. Reference: {{ prov.reference.build | tex }} / {{ prov.reference.name | tex }} (source md5 {{ prov.reference.source_md5 | tex }}).
+\begin{itemize}
+{% for k, v in prov.databases.items() %}
+\item {{ k | tex }}: {{ v | tex }}
+{% endfor %}
+\end{itemize}
+\begin{small}
+\begin{longtable}{>{\raggedright}p{5cm}>{\raggedright\arraybackslash}p{10cm}}
+\toprule Tool & Version(s) \\ \midrule \endhead
+{% for k, v in prov.tools.items() %}
+{{ k | tex }} & {{ v | tex }} \\
+{% endfor %}
+\bottomrule
+\end{longtable}
+\end{small}
+
+\section{References}
+\begin{itemize}
+{% for r in references %}
+\item {{ r | tex }}
+{% endfor %}
+\end{itemize}
+
+\section*{Acknowledgement}
+\begin{quote}
+{% filter tex %}{% include 'acknowledgement.j2' %}{% endfilter %}
+\end{quote}
+\end{document}

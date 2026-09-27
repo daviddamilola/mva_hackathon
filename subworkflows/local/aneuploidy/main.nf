@@ -56,6 +56,9 @@ workflow ANEUPLOIDY {
     arms     = ANEUPLOIDY_MODEL.out.arms
     figures  = ANEUPLOIDY_MODEL.out.figures
     gene_cn  = GENE_CN.out.genes
+    arms_json = ANEUPLOIDY_MODEL.out.arms_json
+    cnv_summary = GENE_CN.out.summary
+    mosdepth_bins_summary = MOSDEPTH_BINS.out.summary
     coverage = MOSDEPTH_BINS.out.summary
     versions = ch_versions
 }

@@ -422,4 +422,26 @@ ax.set_xticks(xs); ax.set_xticklabels([r["arm"] for r in tr], rotation=90, fonts
 ax.set_ylabel("fraction of cells"); ax.set_title("Mosaic aneuploidy burden per arm: estimated cell fraction (red, 95% CI) vs detection limit (grey)")
 ax.legend(loc="upper right"); fig.tight_layout(); fig.savefig(a.prefix + ".arm_burden.png", dpi=150); plt.close(fig)
 
+# per-chromosome depth + BAF panels (one row per chromosome: LRR on top of BAF)
+fig, axes = plt.subplots(12, 4, figsize=(18, 30))
+for idx, c in enumerate(CHROMS):
+    r_, col = divmod(idx, 2)
+    axl, axb = axes[r_][col * 2], axes[r_][col * 2 + 1]
+    m = kk & (chrom == c)
+    axl.scatter(mid[m] / 1e6, lrr[m], s=1, c="#4a6fa5", alpha=0.5, rasterized=True)
+    axl.set_ylim(-1.5, 1.0); axl.axhline(0, color="#999", lw=0.5); axl.set_title(f"chr{c} LRR", fontsize=9)
+    sm = sc == c
+    if sm.any():
+        pick = np.where(sm)[0]
+        pick = pick if len(pick) <= 8000 else rng.choice(pick, 8000, replace=False)
+        axb.scatter(sp[pick] / 1e6, baf[pick], s=1, c="#2e8b57", alpha=0.3, rasterized=True)
+    axb.set_ylim(0, 1); axb.axhline(0.5, color="#999", lw=0.5); axb.set_title(f"chr{c} BAF", fontsize=9)
+    if c in cen:
+        for ax in (axl, axb):
+            ax.axvspan(cen[c][0] / 1e6, cen[c][1] / 1e6, color="#eee")
+    for ax in (axl, axb):
+        ax.tick_params(labelsize=7)
+fig.suptitle("Per-chromosome GC/mappability-corrected depth (LRR) and B-allele frequency (x axis: Mb; grey = centromere)")
+fig.tight_layout(rect=(0, 0, 1, 0.99)); fig.savefig(a.prefix + ".per_chromosome.png", dpi=110); plt.close(fig)
+
 print(json.dumps({k: v for k, v in summary.items() if k != "caveats"}, indent=1))

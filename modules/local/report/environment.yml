@@ -1,0 +1,7 @@
+name: report
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - conda-forge::python=3.12.11
+  - conda-forge::jinja2=3.1.6

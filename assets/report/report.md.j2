@@ -1,0 +1,163 @@
+# MVA Hackathon 2026, Track 2: pharmacogenomics, modifier genotypes and mosaic aneuploidy burden
+
+Sample `{{ sample }}` · generated {{ prov.generated_utc }} · pipeline {{ prov.pipeline.name }} {{ prov.pipeline.version }} @ `{{ prov.pipeline.git_commit }}`
+
+> **Research hypothesis, not a treatment recommendation.** Nothing in this report should change the child's care without clinical-grade confirmation and review by their clinical team.
+
+{% if missing %}
+> **Missing inputs:** {{ missing | join(', ') }}. Sections that depend on them say "not available".
+{% endif %}
+
+## Summary
+
+{% if pgx_summary %}
+- **Pharmacogenomics:** {{ pgx_rows | length }} genes profiled. PharmCAT vs Aldy: {% for k, v in pgx_summary.agreement_counts.items() %}{{ v }} {{ k }}{{ ", " if not loop.last }}{% endfor %}; disagreements: {{ pgx_summary.disagreements | join(', ') if pgx_summary.disagreements else 'none' }}. CPIC/DPWG annotations evaluated: {{ n_guidelines }}, of which **{{ actionable | length }}** carry a dose-adjustment or alternative-drug flag.
+{% else %}
+- **Pharmacogenomics:** not available.
+{% endif %}
+{% if modsum %}
+- **Modifier panel:** {{ modsum.variants_total }} variants in {{ modsum.panel_genes }} genes; **{{ modsum.rare_functional }}** rare and functional ({{ modsum.rare_functional_genes | join(', ') }}).
+{% else %}
+- **Modifier panel:** not available.
+{% endif %}
+{% if cnv %}
+- **Panel structural variants / copy number:** {{ cnv.sv_supported | length }} supported SVs; exon-run CN candidates (unconfirmed; need orthogonal confirmation): {{ cnv.genes_with_cn_call | join(', ') if cnv.genes_with_cn_call else 'none' }}.
+{% endif %}
+{% if aneu %}
+- **Mosaic aneuploidy:** {{ events | length }} arm-level events of {{ aneu.arms_tested }} arms tested{% if focal %} (focal imbalance, not arm-wide: {{ focal | map(attribute='arm') | join(', ') }}){% endif %}. Median detection limit: gain {{ aneu.detection_limit_f_median_across_arms.gain | pct }}, loss {{ aneu.detection_limit_f_median_across_arms.loss | pct }}, CN-LOH {{ aneu.detection_limit_f_median_across_arms.cnloh | pct }} of cells.
+{% else %}
+- **Mosaic aneuploidy:** not available.
+{% endif %}
+{% if qc %}
+- **QC:** {% for c in qc_checks %}{{ c.check }}: **{{ c.status }}**{{ "; " if not loop.last }}{% endfor %}.
+{% endif %}
+
+## Methods
+
+{% include 'methods.j2' %}
+
+## Results
+
+### 1. Pharmacogenomics
+
+| Gene | Diplotype | Phenotype | Activity | Call source | PharmCAT vs Aldy |
+|---|---|---|---|---|---|
+{% for r in pgx_rows %}
+| {{ r.gene }} | {{ r.diplotype }} | {{ r.phenotype }} | {{ r.activity }} | {{ r.source }} | {{ r.agreement }}{% if r.undocumented %} (undocumented variation){% endif %} |
+{% else %}
+| not available | | | | | |
+{% endfor %}
+
+**Aldy vs PyPGx (Stargazer successor):** {% if star_counts %}{% for k, v in star_counts.items() %}{{ v }} {{ k }}{{ ", " if not loop.last }}{% endfor %}.{% else %}not available.{% endif %}
+{% for r in star_rows if r.status == 'different' %}
+
+- {{ r.gene }}: Aldy `{{ r.aldy }}` vs PyPGx `{{ r.pypgx }}`
+{% endfor %}
+
+**HLA (T1K vs OptiType, 2-field):** {% if hla %}{% for g, s in hla.class_I_agreement.items() %}{{ g }} {{ s }}{{ ", " if not loop.last }}{% endfor %}; passed to PharmCAT: {{ hla.passed_to_pharmcat | join(', ') or 'none' }}.{% else %}not available.{% endif %}
+
+**Drugs with a dose-adjustment or alternative-drug recommendation (CPIC/DPWG, from PharmCAT's structured fields):**
+
+{% if actionable %}
+| Drug | Source | Gene(s) | Flag | Strength | Recommendation |
+|---|---|---|---|---|---|
+{% for x in actionable %}
+| {{ x.drug }} | {{ x.source }} | {{ x.genes }} | {{ x.flag }} | {{ x.classification }} | {{ x.recommendation | replace('\n', ' ') }} |
+{% endfor %}
+{% else %}
+None of the {{ n_guidelines }} evaluated guideline annotations carries a dose-adjustment or alternative-drug flag for this genotype.
+{% endif %}
+
+{% if ot_status in ('reported', 'example') %}
+**Open Targets candidate-drug verdicts (stage 1b), drug list `{{ ot_sum.drug_list.label }}` ({{ ot_sum.drug_list.chembl_ids_queried | join(', ') }}){% if ot_status == 'example' %}. EXAMPLE LIST: this checks the join logic and is not the Track 2 candidate set{% endif %}:** join coverage: {{ ot_cov }}. Flags: {{ ot_flags }}. Level-3 rows counted as exploratory: {{ ot_sum.level3_rows_exploratory_total }}. Full table: `pgx/open_targets/{{ sample }}.pgx_ot.verdicts.tsv`.
+{% elif ot_status == 'unrecorded' %}
+**Open Targets candidate-drug verdicts (stage 1b):** withheld. Stage-1b output exists in this directory, but it does not record which drug list produced it. Rerun `pgx_annotate.nf` with `drug_list_label` set.
+{% else %}
+**Open Targets candidate-drug verdicts (stage 1b):** not run for this output (requires the Track 2 candidate list).
+{% endif %}
+
+### 2. Modifier genotypes in the mechanistic panel
+
+{% if modsum %}
+{{ modsum.variants_total }} variants ({{ modsum.variants_pass }} PASS); {{ modsum.rare }} rare; {{ modsum.functional }} functional; **{{ modsum.rare_functional }} rare and functional**:
+
+| Gene | Variant | Filter | Zygosity | Consequence | HGVSp | gnomAD AF (joint) | ClinVar | SpliceAI | AlphaMissense |
+|---|---|---|---|---|---|---|---|---|---|
+{% for r in modrf %}
+| {{ r.gene }} | {{ r.chrom }}:{{ r.pos }} {{ r.ref }}>{{ r.alt }} | {{ r.filter }} | {{ r.zygosity }} | {{ r.consequence }} | {{ r.hgvsp }} | {{ r.gnomad_af_joint or 'absent' }} | {{ r.clinvar_significance or '-' }} | {{ r.spliceai_max_delta or '-' }} | {{ r.alphamissense_score or '-' }} {{ r.alphamissense_class }} |
+{% endfor %}
+{% else %}
+Not available.
+{% endif %}
+
+{% if cnv %}
+**Structural variants and copy number (panel genes):** {{ cnv.sv_touching_panel }} Delly calls touch the panel ({{ cnv.sv_touching_panel_high_tier }} high tier, {{ cnv.sv_contradicted_by_depth }} contradicted by depth); supported: {{ cnv.sv_supported | join('; ') if cnv.sv_supported else 'none' }}. Exon noise σ = {{ cnv.exon_noise_sigma_log2_at_150bp | fmt }} log2 at 150 bp; median gene CN {{ cnv.gene_cn_median | fmt }}.
+{% for g in genecn_calls %}
+- {{ g.gene }}: {{ g.cn_call }} (candidate; requires orthogonal confirmation)
+{% endfor %}
+{% endif %}
+
+### 3. Mosaic aneuploidy burden
+
+{% if aneu %}
+Internal control: chrX non-PAR LRR {{ aneu.internal_control_chrX_nonPAR_lrr | fmt }} (expected {{ aneu.internal_control_expected }}). {{ aneu.het_sites_used }} heterozygous sites (median depth {{ aneu.het_depth_median | fmt }}x), {{ aneu.bins_kept }} bins.
+
+| Arm | Bins | Het sites | LRR | Imbalance d | Status | Cell fraction (95% CI) | Detection limit (loss) |
+|---|---|---|---|---|---|---|---|
+{% for r in arm_rows %}
+| {{ r.arm }} | {{ r.n_bins }} | {{ r.n_het_sites }} | {{ r.lrr_mean | fmt }} | {{ r.baf_d | fmt }} | {{ r.status }} | {% if r.cell_fraction is not none %}{{ r.cell_fraction | pct }} [{{ r.cell_fraction_ci95[0] | pct }}, {{ r.cell_fraction_ci95[1] | pct }}] ({{ r.best_model }}){% else %}-{% endif %} | {{ r.detection_limit_f.loss | pct }} |
+{% endfor %}
+
+{% for key in ['genome', 'perchrom', 'burden'] %}{% if figs[key] %}
+![{{ figs[key].label }}]({{ figs[key].path }})
+{% endif %}{% endfor %}
+
+**Caveats (from the analysis output):**
+{% for c in aneu.caveats %}
+- {{ c }}
+{% endfor %}
+{% else %}
+Not available.
+{% endif %}
+
+### 4. Genome context and QC
+
+{% if qc %}
+| Check | Value | Status | Rule |
+|---|---|---|---|
+{% for c in qc_checks %}
+| {{ c.check }} | {{ c.value | fmt }} | {{ c.status }} | {{ c.rule }} |
+{% endfor %}
+
+Ancestry: {{ qc.ancestry.predicted }} ({{ qc.ancestry.reference }}). Sex: {{ qc.sex_inferred.sex }} (X/autosome depth {{ qc.sex_inferred.x_to_autosome_depth | fmt }}, X het sites {{ qc.sex_inferred.x_het_sites | fmt }}, Y depth {{ qc.sex_inferred.y_depth | fmt }}, chrX LRR {{ qc.sex_inferred.chrX_lrr | fmt }}). Reads {{ '{:,}'.format(qc.reads_total) }}; primary mapped {{ qc.primary_mapped_pct }}%; duplicates {{ qc.duplicate_pct }}%; mean autosomal depth {{ qc.mean_depth_autosomes }}x. ROH: F_ROH(>=1.5 Mb) = {{ qc.roh.F_ROH['>=1.5Mb'].F_ROH }}, longest {{ qc.roh.longest_roh.mb if qc.roh.longest_roh else 'n/a' }} Mb ({{ qc.roh.interpretation_reference }}). MultiQC: `multiqc/multiqc_report.html`.
+{% else %}
+Not available.
+{% endif %}
+
+## Limitations
+
+{% include 'limitations.j2' %}
+
+## Provenance
+
+- Pipeline: {{ prov.pipeline.name }} {{ prov.pipeline.version }}, git `{{ prov.pipeline.git_commit }}`{% if prov.pipeline.git_dirty %} (uncommitted changes){% endif %}, Nextflow {{ prov.pipeline.nextflow_version }}, session `{{ prov.pipeline.session_id }}`, profile `{{ prov.pipeline.profile }}`, run started {{ prov.pipeline.run_start }}.
+- Reference: {{ prov.reference.build }} / {{ prov.reference.name }} (source md5 {{ prov.reference.source_md5 }}).
+{% for k, v in prov.databases.items() %}
+- {{ k }}: {{ v }}
+{% endfor %}
+
+| Tool | Version(s) |
+|---|---|
+{% for k, v in prov.tools.items() %}
+| {{ k }} | {{ v }} |
+{% endfor %}
+
+## References
+
+{% for r in references %}
+- {{ r }}
+{% endfor %}
+
+## Acknowledgement
+
+> {% include 'acknowledgement.j2' %}

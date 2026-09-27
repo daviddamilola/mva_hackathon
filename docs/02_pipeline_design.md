@@ -1,6 +1,6 @@
 # 02 — Pipeline design
 
-Status (updated 2026-09-26):
+Status (updated 2026-09-27):
 
 | Branch | State | Doc |
 |---|---|---|
@@ -12,7 +12,8 @@ Status (updated 2026-09-26):
 | HLA typing (T1K + OptiType) | implemented, run | 03 |
 | Aneuploidy burden | implemented, run | 05 |
 | Panel CNV/SV (Delly + exon depth) | implemented, run | 05 |
-| Genome QC, report | planned | — |
+| Genome QC | implemented, run | 06 |
+| Report + provenance | implemented, run | 07 |
 
 The DAG below is the original proposal; changes since then are listed under
 "Changes from the proposal".

@@ -112,5 +112,7 @@ workflow PGX_CALL {
     report     = PHARMCAT_RUN.out.report        // [ meta, report.json ]
     forcecall  = PGX_FORCE_CALL.out.vcf
     star_compare = ch_star_compare               // [ meta, aldy_vs_pypgx.tsv ]
+    hla_files  = params.skip_hla ? Channel.empty() : HLA_RECONCILE.out.summary.mix(HLA_RECONCILE.out.calls)
+    forcecall_summary = PGX_FORCE_CALL.out.summary
     versions   = ch_versions
 }
