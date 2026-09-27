@@ -1,0 +1,7 @@
+name: bin_annotate
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - bioconda::bedtools=2.31.1
+  - conda-forge::python=3.12.11

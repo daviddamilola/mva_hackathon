@@ -1,0 +1,9 @@
+name: base
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - bioconda::delly=2.6.0
+  - bioconda::bcftools=1.24
+  - bioconda::htslib=1.24
+  - conda-forge::procps-ng=4.0.6   # Nextflow needs ps inside task containers

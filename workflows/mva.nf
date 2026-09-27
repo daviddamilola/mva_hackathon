@@ -2,12 +2,13 @@
  * Main workflow. Branches implemented so far: reference preparation, alignment, stage 1a PGx calling,
  * modifier panel.
  * Stage 1b (Open Targets annotation) is a separate entry point: pgx_annotate.nf.
- * Planned: aneuploidy burden, genome QC, report (see docs/).
+ * aneuploidy burden + panel CNV/SV. Planned: genome QC, report (see docs/).
  */
 include { PREPARE_REFERENCE } from '../subworkflows/local/prepare_reference'
 include { ALIGN_LANES       } from '../subworkflows/local/align_lanes'
 include { PGX_CALL          } from '../subworkflows/local/pgx_call'
 include { MODIFIER_PANEL    } from '../subworkflows/local/modifier_panel'
+include { ANEUPLOIDY        } from '../subworkflows/local/aneuploidy'
 
 workflow MVA {
     main:
@@ -57,6 +58,13 @@ workflow MVA {
         ch_vcf = Channel.of([ sample_meta, file(params.vcf, checkIfExists: true), file(params.vcf_tbi ?: "${params.vcf}.tbi", checkIfExists: true) ])
         MODIFIER_PANEL(ch_vcf, PREPARE_REFERENCE.out.fasta, PREPARE_REFERENCE.out.fai)
         ch_versions = ch_versions.mix(MODIFIER_PANEL.out.versions)
+    }
+
+    if (!params.skip_aneuploidy) {
+        if (params.skip_pgx) error "skip_aneuploidy=false needs the validated CRAM from the PGx branch (skip_pgx=false)"
+        ch_vcf_a = Channel.of([ sample_meta, file(params.vcf, checkIfExists: true), file(params.vcf_tbi ?: "${params.vcf}.tbi", checkIfExists: true) ])
+        ANEUPLOIDY(PGX_CALL.out.valid_cram, ch_vcf_a, PREPARE_REFERENCE.out.fasta, PREPARE_REFERENCE.out.fai)
+        ch_versions = ch_versions.mix(ANEUPLOIDY.out.versions)
     }
 
     ch_versions
