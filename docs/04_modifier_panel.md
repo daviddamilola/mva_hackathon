@@ -109,7 +109,8 @@ limits below, not proof of absence.
   classified benign (one here: ClinVar B/LB, 23 gnomAD homozygotes).
 - **The variant source is the distributed variant-only VCF.** A panel position without a record
   could be hom-ref or uncovered; coverage over the panel will be reported by the QC branch.
-  Structural variants and CNVs in panel genes are not assessed here.
+  Structural variants and CNVs in panel genes are not assessed here; they are covered by the
+  Delly + exon-depth analysis in doc 05.
 - **gnomAD comparison uses the joint AF and grpmax.** Ancestry-matched comparison needs the
   ancestry inference in the QC branch.
 - **Germline, blood-derived calls.** Somatic or mosaic variants in affected tissues are not

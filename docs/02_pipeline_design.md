@@ -10,7 +10,9 @@ Status (updated 2026-09-26):
 | PGx stage 1b: Open Targets annotation (`pgx_annotate.nf`) | implemented; run on example drugs only | 03 |
 | Modifier panel | implemented, run | 04 |
 | HLA-A/B typing | planned | — |
-| Aneuploidy burden, genome QC, report | planned | — |
+| Aneuploidy burden | implemented, run | 05 |
+| Panel CNV/SV (Delly + exon depth) | implemented; running | 05 |
+| Genome QC, report | planned | — |
 
 The DAG below is the original proposal; changes since then are listed under
 "Changes from the proposal".
