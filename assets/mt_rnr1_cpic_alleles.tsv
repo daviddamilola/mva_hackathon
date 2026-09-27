@@ -1,0 +1,28 @@
+# CPIC MT-RNR1 allele functions. Source: https://api.cpicpgx.org/v1/allele?genesymbol=eq.MT-RNR1&select=name,clinicalfunctionalstatus&order=name
+# fetched 2026-09-27; sha256 of the JSON response: 0d7e33e926b88742520e0ab53a401424331ea3b7fba384f95a6f79213084d36d
+name	pos	ref	alt	clinical_function
+m.1095T>C	1095	T	C	increased risk of aminoglycoside-induced hearing loss
+m.1189T>C	1189	T	C	uncertain risk of aminoglycoside-induced hearing loss
+m.1243T>C	1243	T	C	uncertain risk of aminoglycoside-induced hearing loss
+m.1494C>T	1494	C	T	increased risk of aminoglycoside-induced hearing loss
+m.1520T>C	1520	T	C	uncertain risk of aminoglycoside-induced hearing loss
+m.1537C>T	1537	C	T	uncertain risk of aminoglycoside-induced hearing loss
+m.1555A>G	1555	A	G	increased risk of aminoglycoside-induced hearing loss
+m.1556C>T	1556	C	T	uncertain risk of aminoglycoside-induced hearing loss
+m.663A>G	663	A	G	uncertain risk of aminoglycoside-induced hearing loss
+m.669T>C	669	T	C	uncertain risk of aminoglycoside-induced hearing loss
+m.747A>G	747	A	G	uncertain risk of aminoglycoside-induced hearing loss
+m.786G>A	786	G	A	uncertain risk of aminoglycoside-induced hearing loss
+m.807A>C	807	A	C	uncertain risk of aminoglycoside-induced hearing loss
+m.807A>G	807	A	G	uncertain risk of aminoglycoside-induced hearing loss
+m.827A>G	827	A	G	normal risk of aminoglycoside-induced hearing loss
+m.839A>G	839	A	G	uncertain risk of aminoglycoside-induced hearing loss
+m.896A>G	896	A	G	uncertain risk of aminoglycoside-induced hearing loss
+m.930G>A	930	G	A	uncertain risk of aminoglycoside-induced hearing loss
+m.951G>A	951	G	A	uncertain risk of aminoglycoside-induced hearing loss
+m.960C>del	960	C	del	uncertain risk of aminoglycoside-induced hearing loss
+m.961T>del	961	T	del	uncertain risk of aminoglycoside-induced hearing loss
+m.961T>del+Cn	961	T	del+Cn	uncertain risk of aminoglycoside-induced hearing loss
+m.961T>G	961	T	G	uncertain risk of aminoglycoside-induced hearing loss
+m.988G>A	988	G	A	uncertain risk of aminoglycoside-induced hearing loss
+Reference				normal risk of aminoglycoside-induced hearing loss
