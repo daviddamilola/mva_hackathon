@@ -1,0 +1,124 @@
+# TEMPLATE for a stage 1b candidate drug list. Copy to assets/drugs_track2.yml and fill in
+# `axes` and `candidates`. Nothing here is a candidate set; the two lists are deliberately empty.
+#
+# Run:
+#   CONDA_SUBDIR=osx-arm64 nextflow run pgx_annotate.nf -profile conda,macos_docker \
+#       -params-file assets/drugs_track2.yml
+#
+# Nextflow parses this file straight into params, so the structure below is the contract.
+# ---------------------------------------------------------------------------------------------
+# WHAT THE PIPELINE DOES WITH EACH FIELD
+#
+#   drug_list_label   recorded in the stage 1b summary and printed in the report. Required:
+#                     pgx_annotate.nf stops without it, and the report withholds stage 1b output
+#                     that does not name the list that produced it (docs/07).
+#   drug_list_example must be false or absent for a real candidate set. When true, the report
+#                     labels the output as an example that checks the join logic.
+#   axes              rationale groups. The report presents candidates by axis, never as one
+#                     ranked list. Keys are referenced by each candidate's `axis`.
+#   candidates        one entry per drug, BY NAME. Do not write ChEMBL IDs: RESOLVE_CANDIDATES
+#                     resolves every name through the Open Targets search API at run time, so the
+#                     IDs are reproducible against a stated release rather than pasted in. A name
+#                     that does not resolve is reported with a status, never dropped.
+#   anti_target_rules the mechanistic exclusion filter, applied to every resolved candidate.
+#
+# CANDIDATE FIELDS
+#   name              required. Matched case-insensitively against Open Targets drug names. If the
+#                     name is ambiguous the candidate is reported as `ambiguous` with the competing
+#                     hits listed, and is not queried; disambiguate by using the exact OT name.
+#   axis              required. A key of `axes`.
+#   tier              required. Your confidence scale; the report prints it verbatim. The scheme
+#                     used in docs/08: 1 = mechanism- or phenotype-matched, approved drug, rationale
+#                     verified in primary literature; 2 = plausible from the syndrome literature,
+#                     not shown in this child; 3 = exploratory, investigational, or with unresolved
+#                     safety questions; anti = included so the filter can be seen to exclude it.
+#   patient_support   required, one of:
+#                       released_feature  supported by a feature in the released HPO set
+#                       syndrome_only     supported by the published MVA1 series, but the relevant
+#                                         feature is NOT in the released set
+#                       mechanism_only    derived from the genotype alone
+#                     The report groups candidates by this field, so a syndrome-level or purely
+#                     mechanistic proposal can never be read as a patient-specific one. An
+#                     unrecognised value stops the run rather than defaulting. This is how the
+#                     epistemic rule in docs/09 is enforced in the output: absence of a feature from
+#                     the released set is not evidence of its absence in the child, so a candidate
+#                     resting on such a feature is marked syndrome_only, never released_feature.
+#   move_up           required in practice: what evidence would raise the tier. Printed with the
+#                     candidate. Tiering without this is just an opinion.
+#   investigational   optional bool. Marks a drug with no approval anywhere, so the report can say
+#                     so next to the Open Targets maximumClinicalStage.
+#
+# EXAMPLE OF THE SHAPE (these are the join-logic example drugs from assets/drugs_example.yml,
+# not proposed candidates):
+#
+#   candidates:
+#     - {name: fluorouracil, axis: 1, tier: 3, patient_support: released_feature,
+#        move_up: "what evidence would raise this tier"}
+#     - {name: mercaptopurine, axis: 1, tier: 3, patient_support: mechanism_only,
+#        move_up: "...", investigational: false}
+#
+# OUTPUTS (results/pgx/open_targets/)
+#   <sample>.track2.resolved.tsv     name, axis, tier, ChEMBL ID, matched name, score, status,
+#                                    max clinical stage, mechanism targets, anti-target verdict
+#   <sample>.track2.anti_target.tsv  one row per drug x mechanism target: action type, which rule
+#                                    matched, verdict, reason
+#   <sample>.pgx_ot.verdicts.tsv     drug | axis | tier | patient_support | gene | called genotype |
+#                                    matched OT allele | evidence level | flag | guideline text
+# ---------------------------------------------------------------------------------------------
+
+drug_list_label: REPLACE_ME          # e.g. track2_candidates_v1
+drug_list_example: false
+
+# Rationale groups. Add one block per axis; the key is what `candidates[].axis` refers to.
+#   title      short heading used in the report
+#   rationale  why this axis is proposed, with citations. Say plainly whether it rests on this
+#              child's own record or on the published series.
+axes: {}
+#   1:
+#     title: <short heading>
+#     rationale: >-
+#       <why, with PMIDs. State plainly whether the axis rests on a released feature or on the
+#       published series; never write that the child lacks a feature that is merely absent from
+#       the released set>
+
+candidates: []
+
+# ---------------------------------------------------------------------------------------------
+# ANTI-TARGET RULES. Applied by bin/resolve_candidates.py to every resolved candidate. An excluded
+# candidate is kept in every table with its exclusion reason: the exclusions are the evidence that
+# the filter works, so they are reported, not removed.
+#
+# Rule 1 (automated): exclude when a mechanism-of-action row has an inhibitory action type AND one
+# of that row's targets carries a direct GO biological-process annotation to a term below.
+# Encodes: an inhibitor of a mitotic-fidelity gene is contraindicated in a mitotic-fidelity
+# disorder. The GO terms are checked against the Open Targets target record at run time.
+#
+# Rule 2 (curated): targets whose inhibition is shown in primary literature to compromise mitotic
+# fidelity but which carry none of those GO terms. Every entry cites a PMID, printed in the
+# exclusion reason. Verified against the abstract before being added here.
+#
+# A drug with no mechanism-of-action row in Open Targets is marked 'not assessable' and carried
+# forward with that stated: no mechanism annotation is not evidence of safety.
+anti_target_rules:
+  go_terms:
+    GO:0007059: chromosome segregation
+    GO:0000070: mitotic sister chromatid segregation
+    GO:0000819: sister chromatid segregation
+    GO:0098813: nuclear chromosome segregation
+    GO:0007094: mitotic spindle assembly checkpoint signaling
+    GO:0007052: mitotic spindle organization
+  inhibitory_action_types:
+    - INHIBITOR
+    - ANTAGONIST
+    - BLOCKER
+    - DEGRADER
+    - DISRUPTING AGENT
+    - NEGATIVE ALLOSTERIC MODULATOR
+    - NEGATIVE MODULATOR
+  literature:
+    - targets: [MTOR, FKBP1A]
+      pmid: "35141499"
+      citation: Yamada C et al., iScience 2022;25:103675
+      statement: >-
+        mTORC1 inactivation induces mitotic slippage, overriding spindle assembly checkpoint
+        arrest, and causes chromosome instability; shown in budding yeast and human cells.
