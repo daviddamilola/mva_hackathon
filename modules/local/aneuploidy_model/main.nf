@@ -22,6 +22,8 @@ process ANEUPLOIDY_MODEL {
     path "versions.yml"                                        , emit: versions
 
     script:
+    // digest of the bin script: part of the task hash (Nextflow does not hash bin/), and recorded in provenance
+    def script_md5 = file("${projectDir}/bin/aneuploidy_model.py").text.md5()
     """
     # join mosdepth bin means onto the annotated bins (same makewindows order, checked)
     python3 - <<'PYEOF'
@@ -52,6 +54,7 @@ process ANEUPLOIDY_MODEL {
         python: \$(python3 --version | cut -d' ' -f2)
         numpy: \$(python3 -c 'import numpy; print(numpy.__version__)')
         scipy: \$(python3 -c 'import scipy; print(scipy.__version__)')
+        aneuploidy_model_py_md5: "${script_md5}"
         model: "direct implementation (bin/aneuploidy_model.py), bins ${params.bin_size} bp, min mappability ${params.aneuploidy_min_map}"
     END_VERSIONS
     """

@@ -435,10 +435,14 @@ for idx, c in enumerate(CHROMS):
         pick = np.where(sm)[0]
         pick = pick if len(pick) <= 8000 else rng.choice(pick, 8000, replace=False)
         axb.scatter(sp[pick] / 1e6, baf[pick], s=1, c="#2e8b57", alpha=0.3, rasterized=True)
+    else:  # no het sites (chrX/chrY in a male): say so rather than leave a blank panel
+        axb.text(0.5, 0.5, "no heterozygous sites used", transform=axb.transAxes, ha="center", va="center",
+                 fontsize=8, color="#666")
     axb.set_ylim(0, 1); axb.axhline(0.5, color="#999", lw=0.5); axb.set_title(f"chr{c} BAF", fontsize=9)
     if c in cen:
         for ax in (axl, axb):
             ax.axvspan(cen[c][0] / 1e6, cen[c][1] / 1e6, color="#eee")
+    axb.set_xlim(axl.get_xlim())  # BAF shares the LRR panel's coordinates, even when it has no points
     for ax in (axl, axb):
         ax.tick_params(labelsize=7)
 fig.suptitle("Per-chromosome GC/mappability-corrected depth (LRR) and B-allele frequency (x axis: Mb; grey = centromere)")
