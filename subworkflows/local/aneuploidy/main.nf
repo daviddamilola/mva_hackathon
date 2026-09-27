@@ -45,7 +45,7 @@ workflow ANEUPLOIDY {
     ANEUPLOIDY_MODEL(MOSDEPTH_BINS.out.regions, BIN_ANNOTATE.out.bins, ch_vcf.first(), res.cyto.first(), res.segdup.first())
 
     DELLY_CALL(ch_valid_cram, ch_ref, res.excl.first())
-    GENE_CN(MOSDEPTH_EXONS.out.regions, BIN_ANNOTATE.out.exons, ANEUPLOIDY_MODEL.out.bins_depth,
+    GENE_CN(MOSDEPTH_EXONS.out.regions, BIN_ANNOTATE.out.exons, ANEUPLOIDY_MODEL.out.bins_depth, ANEUPLOIDY_MODEL.out.bins,
             DELLY_CALL.out.vcf.first(), file(params.gene_panel_bed, checkIfExists: true), ANEUPLOIDY_MODEL.out.arms_json)
 
     ch_versions = Channel.empty().mix(BIN_ANNOTATE.out.versions, MOSDEPTH_BINS.out.versions, ANEUPLOIDY_MODEL.out.versions,

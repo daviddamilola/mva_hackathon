@@ -11,7 +11,7 @@ Status (updated 2026-09-26):
 | Modifier panel | implemented, run | 04 |
 | HLA-A/B typing | planned | — |
 | Aneuploidy burden | implemented, run | 05 |
-| Panel CNV/SV (Delly + exon depth) | implemented; running | 05 |
+| Panel CNV/SV (Delly + exon depth) | implemented, run | 05 |
 | Genome QC, report | planned | — |
 
 The DAG below is the original proposal; changes since then are listed under

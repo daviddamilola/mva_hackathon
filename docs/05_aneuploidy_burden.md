@@ -1,7 +1,6 @@
 # 05 — Mosaic aneuploidy burden (bulk WGS depth + allelic imbalance)
 
-Status: **implemented and run** (2026-09-27). The panel-gene CNV/SV part (Delly + exon depth) is
-running; see the last section. The numbers here come from
+Status: **implemented and run** (2026-09-27), including the panel-gene CNV/SV part (last section). The numbers here come from
 `results/aneuploidy/WGS_EX2312012.aneuploidy.summary.json` and `.arms.json`. Research hypothesis
 only.
 
@@ -134,6 +133,49 @@ cross-check against.
 
 ## Panel-gene CNV/SV (closing the modifier-panel gap)
 
-*Running.* Delly 2.6.0 (`sr`, genome-wide, native arm64 container because the osx-arm64 build
-crashes on CRAM) plus exon-level read depth for the 32 panel genes' MANE exons, normalised to
-GC-matched genome bins. Results will be recorded here when the run completes.
+Status: **run** (2026-09-27). Source: `results/panel_cnv_sv/WGS_EX2312012.panel.cnv_sv.summary.json`.
+
+**Methods.**
+- **Structural variants:** Delly 2.6.0 `sr`, genome-wide, run in a native linux/arm64 container
+  (`containers/delly`: pinned base digest and bioconda packages). The osx-arm64 build dies with
+  SIGBUS on CRAM input; BAM works. Settings: explicit reference, Delly hg38 exclude list,
+  MAPQ ≥ 20.
+- **Exon read depth:** mosdepth 0.3.14 over the 462 MANE Select exons of the 32 panel genes, with
+  these steps:
+  1. expected depth from GC-matched genome bins;
+  2. exon-scale GC re-centring across panel exons;
+  3. length-aware noise (σ = 0.198 log2 at 150 bp, robust MAD);
+  4. z-scores.
+- **CN calls:** runs of ≥ 2 consecutive exons with |z| ≥ 3.
+- **SV hits on a gene:**
+  - DEL/DUP: overlap with the gene ±10 kb;
+  - INV/BND/INS: a breakpoint inside the gene ±10 kb.
+- **SV depth check (DEL/DUP):** span LRR for events ≥ 100 kb, exon z inside smaller ones.
+- **Supported SV:** high tier (PRECISE, PE ≥ 3, SR ≥ 3) and not contradicted by depth.
+
+**Development note.** The first version used fixed exon CN thresholds (1.5/2.5) and counted any SV
+span overlap. With a per-exon CN SD of about 0.34, 14% of exons fell outside those thresholds by
+chance: 7/32 genes were flagged, and 105 "exon hits" came from imprecise 100–223 Mb Delly calls
+between repeat-rich chromosome ends with flat depth. Both were artefacts; the statistical rules
+above replaced them.
+
+| Metric | Value |
+|---|---|
+| Usable panel exons | 443 / 462 |
+| Median gene copy number | 1.99 |
+| Delly PASS non-reference calls genome-wide | DEL 8,970 · INS 1,554 · DUP 981 · BND 925 · INV 748 |
+| SVs touching the panel | 54, of which **0 high tier**, 44 contradicted by depth |
+| **Supported SVs in panel genes** | **0** |
+| Exon-run CN calls | 1 borderline candidate (2 short AT-rich exons in one MVA-disease gene, z −3.3/−3.5, CN ≈ 1.24) |
+| Candidate checked in the reads | **not confirmed**: no depth step at 250 bp resolution (34–42× across the exons vs 28–50× in the flanks; a het deletion would drop to ~22× with sharp edges), no Delly call in the gene. Classified as noise. |
+| Single-exon outliers (low confidence, not interpreted) | 5 genes |
+
+**Interpretation.** No supported structural variant or multi-exon copy-number change was found
+in any of the 32 panel genes. Together with doc 04 (small variants), this extends the negative
+modifier finding to SVs and CNVs within these limits:
+- sensitivity is good for multi-exon heterozygous deletions and duplications (expected z ≤ −5);
+- sensitivity is limited for single-exon events;
+- balanced events whose breakpoints Delly misses in repeats will be missed;
+- mosaic CNVs below ~30% of cells will be missed.
+
+A candidate CN call is a lead for orthogonal confirmation (e.g. MLPA or ddPCR), not a finding.

@@ -8,6 +8,7 @@ process GENE_CN {
     tuple val(meta), val(label), path(exon_regions)
     path exons_annot
     path bins_with_depth
+    path lrr_bins
     tuple val(meta2), path(delly_vcf), path(delly_tbi)
     path panel_bed
     path arms_json
@@ -21,7 +22,7 @@ process GENE_CN {
 
     script:
     """
-    gene_cn.py --exon-depth ${exon_regions} --exons ${exons_annot} --bins ${bins_with_depth} \\
+    gene_cn.py --exon-depth ${exon_regions} --exons ${exons_annot} --bins ${bins_with_depth} --lrr-bins ${lrr_bins} \\
         --delly ${delly_vcf} --panel ${panel_bed} --arms ${arms_json} --prefix ${meta.id}.panel \\
         --min-map ${params.aneuploidy_min_map}
 

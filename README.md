@@ -28,7 +28,7 @@ The data is controlled-access under a DUA. This repo holds analysis code only.
 | HLA-A/B typing | planned |
 | Modifier panel: VEP 116 + gnomAD v4.1 + ClinVar + AlphaMissense + SpliceAI | implemented, run |
 | Mosaic aneuploidy (mosdepth LRR + BAF model, per-arm cell fraction) | implemented, run |
-| Panel-gene CNV/SV (Delly + exon depth) | implemented; running |
+| Panel-gene CNV/SV (Delly + exon depth) | implemented, run |
 | Genome QC (ROH, ancestry, sex, contamination, MultiQC) | planned |
 | Report (Jinja2 → Markdown + LaTeX) | planned |
 
