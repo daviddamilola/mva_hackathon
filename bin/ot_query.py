@@ -3,6 +3,7 @@
 
 Subcommands
   meta                        release/API version -> JSON
+  literature --diseases IDs   publication count per disease (an unmet-need measure) -> JSON
   drug   --chembl ID          drug(chemblId){pharmacogenomics}. If the ID has no PGx rows, its parent
                               molecule and then child molecules are queried; the resolution is recorded,
                               never applied silently.
@@ -79,6 +80,20 @@ def cmd_drug(args):
     return result
 
 
+LIT_Q = """query($ids: [String!]!) {
+  diseases(efoIds: $ids) { id name literatureOcurrences { count } }
+}"""
+
+
+def cmd_literature(args):
+    ids = [x.strip() for x in args.diseases.split(",") if x.strip()]
+    rows = gql(LIT_Q, {"ids": ids})["diseases"] or []
+    return {"queried_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "diseases": [{"id": d["id"], "name": d["name"],
+                          "publications": (d.get("literatureOcurrences") or {}).get("count")}
+                         for d in rows]}
+
+
 def cmd_target(args):
     genes = [g.strip() for g in args.genes.split(",") if g.strip()]
     m = gql("query($t: [String!]!) { mapIds(queryTerms: $t, entityNames: [\"target\"]) { mappings { term hits { id name entity } } } }",
@@ -101,9 +116,10 @@ sub = ap.add_subparsers(dest="cmd", required=True)
 sub.add_parser("meta")
 p = sub.add_parser("drug"); p.add_argument("--chembl", required=True)
 p = sub.add_parser("target"); p.add_argument("--genes", required=True)
+p = sub.add_parser("literature"); p.add_argument("--diseases", required=True)
 ap.add_argument("--out", required=True)
 args = ap.parse_args()
-res = {"meta": cmd_meta, "drug": cmd_drug, "target": cmd_target}[args.cmd](args)
+res = {"meta": cmd_meta, "drug": cmd_drug, "target": cmd_target, "literature": cmd_literature}[args.cmd](args)
 with open(args.out, "w") as fh:
     json.dump(res, fh, indent=1)
 print(f"{args.cmd}: written {args.out}")

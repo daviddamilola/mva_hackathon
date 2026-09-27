@@ -8,10 +8,22 @@ Sample `{{ sample }}` · generated {{ prov.generated_utc }} · pipeline {{ prov.
 > **Missing inputs:** {{ missing | join(', ') }}. Sections that depend on them say "not available".
 {% endif %}
 
-## Summary
+{% if unmet_rows %}
+> **Unmet need, quantified.** The Open Targets literature index ({{ prov.databases.open_targets }}) returns {% for d in unmet_rows %}**{{ d.publications }}** publication{{ 's' if d.publications != 1 }} for {{ d.name }} (`{{ d.id }}`){{ '; ' if not loop.last }}{% endfor %}. For comparison, a common disease term returns tens of thousands. That is the evidence base this report is written against, and the reason a mechanism-led rather than trial-led approach is the only one available.
+
+{% endif %}## Summary
 
 {% if pgx_summary %}
-- **Pharmacogenomics:** {{ pgx_rows | length }} genes profiled. PharmCAT vs Aldy: {% for k, v in pgx_summary.agreement_counts.items() %}{{ v }} {{ k }}{{ ", " if not loop.last }}{% endfor %}; disagreements: {{ pgx_summary.disagreements | join(', ') if pgx_summary.disagreements else 'none' }}. CPIC/DPWG annotations evaluated: {{ n_guidelines }}, of which **{{ actionable | length }}** carry a dose-adjustment or alternative-drug flag.
+{% if counterfactual and counterfactual.applicable %}{% for g, v in counterfactual.genes.items() %}
+- **{{ g }} copy number changed the phenotype call:** `{{ v.observed.diplotype }}`, {{ v.observed.phenotype }} (activity {{ v.observed.activity_score }}). Without copy-number detection, the call would be `{{ v.counterfactual.diplotype }}`, {{ v.counterfactual.phenotype }} (activity {{ v.counterfactual.activity_score }}), and {{ counterfactual.flagged_counterfactual - counterfactual.flagged_observed }} more {{ g }}-dependent CPIC/DPWG annotations would carry dose-adjustment or alternative-drug flags that are not indicated.
+{% endfor %}{% endif %}
+{% if pgx_literature %}
+{% for x in pgx_literature %}
+- **{{ x.label }} — {{ x.context | lower }}.** {{ x.literature[-1].statement }} Cited: {% for l in x.literature if l.pmid %}PMID {{ l.pmid }}{{ ', ' if not loop.last }}{% endfor %}. No CPIC or DPWG guideline covers this drug-gene pair, so it carries no guideline flag; that is why it is stated here rather than left to an empty flag column.
+{% endfor %}
+{% endif %}
+- **Pharmacogenomics, reportable negatives in drug classes this child is likely to meet:** {{ pgx_negatives | join('; ') if pgx_negatives else 'none' }}.
+- **Pharmacogenomics, flags in those classes:** {{ pgx_flagged | join('; ') if pgx_flagged else 'none' }}. {{ pgx_rows | length }} genes profiled; PharmCAT vs Aldy: {% for k, v in pgx_summary.agreement_counts.items() %}{{ v }} {{ k }}{{ ", " if not loop.last }}{% endfor %}; disagreements: {{ pgx_summary.disagreements | join(', ') if pgx_summary.disagreements else 'none' }}.
 {% else %}
 - **Pharmacogenomics:** not available.
 {% endif %}
@@ -21,7 +33,7 @@ Sample `{{ sample }}` · generated {{ prov.generated_utc }} · pipeline {{ prov.
 - **Modifier panel:** not available.
 {% endif %}
 {% if cnv %}
-- **Panel structural variants / copy number:** {{ cnv.sv_supported | length }} supported SVs; exon-run CN candidates (unconfirmed; need orthogonal confirmation): {{ cnv.genes_with_cn_call | join(', ') if cnv.genes_with_cn_call else 'none' }}.
+- **Panel structural variants / copy number:** {{ cnv.sv_supported | length }} supported SVs; open exon-run CN candidates: {{ cn_open | join(', ') if cn_open else 'none' }}{% if cn_resolved %} ({{ cn_resolved | join(', ') }} flagged by exon depth, checked in the reads and classified as noise){% endif %}.
 {% endif %}
 {% if aneu %}
 - **Mosaic aneuploidy:** {{ events | length }} arm-level events of {{ aneu.arms_tested }} arms tested{% if focal %} (focal imbalance, not arm-wide: {{ focal | map(attribute='arm') | join(', ') }}){% endif %}. Median detection limit: gain {{ aneu.detection_limit_f_median_across_arms.gain | pct }}, loss {{ aneu.detection_limit_f_median_across_arms.loss | pct }}, CN-LOH {{ aneu.detection_limit_f_median_across_arms.cnloh | pct }} of cells.
@@ -38,12 +50,116 @@ Sample `{{ sample }}` · generated {{ prov.generated_utc }} · pipeline {{ prov.
 
 ## Results
 
-### 1. Pharmacogenomics
+### 1. Variant mechanism
+
+{% if domain_map %}
+{% for v in truncating %}
+**{{ v.hgvsp }}** ({{ v.consequence }}, {{ v.zygosity }}) truncates {{ domain_map.protein }} at residue {{ v.position }} of {{ domain_map.length }}. Domains complete in the truncated protein: {{ v.retained_domains | join(', ') if v.retained_domains else 'none' }}. Domains lost: **{{ v.lost_domains | join(', ') }}**.
+{% endfor %}
+{% for v in nontruncating %}
+**{{ v.hgvsp }}** ({{ v.consequence }}, {{ v.zygosity }}) falls at residue {{ v.position }}, inside {{ v.in_domains | join(', ') if v.in_domains else 'no annotated domain' }}.
+{% endfor %}
+
+The two alleles therefore converge on the same module: one truncates before the kinase domain begins, the other sits inside it. That is a sharper statement than "one null allele and one hypomorph", and it is derived here from the domain coordinates rather than asserted — domain boundaries from {{ domain_map.domain_source }}; variant positions from this run's own panel output.
+
+{% if figs.domains %}
+![{{ figs.domains.label }}]({{ figs.domains.path }})
+{% endif %}
+{% else %}
+Domain mapping not available.
+{% endif %}
+
+{% if nmd_ptcs %}
+**Nonsense-mediated decay.** Whether the truncating allele produces a shortened protein or no protein at all decides what a readthrough strategy could act on.
+
+| Variant | PTC exon | PTC (cDNA) | Last exon-exon junction | Distance | Exons downstream | Verdict |
+|---|---|---|---|---|---|---|
+{% for p in nmd_ptcs %}
+| {{ p.gene }} {{ p.hgvsp | mdcell }} | {{ p.ptc_exon }} | {{ p.ptc_cdna }} | {{ p.last_junction_cdna }} | {{ p.ptc_to_last_junction_nt }} nt | {{ p.exons_downstream_of_ptc }} | **{{ p.verdict }}** |
+{% endfor %}
+
+Rule applied: a PTC more than {{ nmd.rules.last_junction_nt }} nt upstream of the last exon-exon junction is predicted to trigger nonsense-mediated decay; a PTC in the last exon, or within that window, escapes it. The cDNA position recomputed from the exon structure is checked against VEP's before any verdict is issued.
+{% endif %}
+
+{% if consanguinity_excluded %}
+**Recurrent parental pregnancy loss is consistent with biallelic lethality.** Recurrent spontaneous abortion (HP:0200067) is among the released features. Runs of homozygosity give F_ROH(>=1.5 Mb) = {{ roh_f }}, so the parents are not detectably related, and each pregnancy of two unrelated carriers has a 25% chance of being biallelic. Complete knockout in mouse is embryonic-lethal with complete penetrance, between implantation and placentation. If biallelic loss is lethal in humans too, recurrent early pregnancy loss is the predicted consequence, and it is what the family history records. This is independent human evidence, from this child's own family, for the premise the whole null-plus-hypomorph argument rests on. It is consistent with that premise rather than proof of it: recurrent miscarriage is common and has many causes, and no products of conception were genotyped.
+{% endif %}
+
+**Residual function — conditional, and stated as such.** Simmons et al. (Hum Mol Genet 2019;28:1822, PMID 30668728) report that nearly complete loss of BubR1 is required for microcephaly. Microcephaly is not among the features released to participants. **If** it is genuinely absent rather than unreported or unassessed, that would imply the missense allele retains meaningful activity, and strategies acting on residual protein would be acting on a partially functional system. The antecedent is not established here and is not asserted: under the epistemic rule above, absence from the released set is not evidence of absence. Two further cautions apply — microcephaly is reported in 87% of MVA1 cases but is explicitly not required for the diagnosis (Callier P et al., Am J Med Genet A 2005;137:204-7, PMID 16059936), and this child is young, so a head-circumference trajectory may not be complete. The inference is recorded because it would matter if resolved, not because it is resolved.
+
+### 2. Pharmacogenomics by clinical context
+
+Results are grouped by the clinical contexts this child actually faces, not by gene, and ordered by how well each is supported by evidence about this child. A normal or negative genotype in a class this child will meet is reported as a finding in its own row. Every genotype interpretation below is PharmCAT's own CPIC, DPWG or FDA annotation for the called genotype; FDA text is shown with its source and is never counted as a guideline flag. Curated literature is shown separately from guidelines and labelled as such.
+
+> **On the clinical features.** The eight HPO terms released to hackathon participants are the features *made available*, not the complete clinical picture. A feature's presence is evidence it is present; its **absence from that set is not evidence it is absent** — it may be absent, may not have been assessed, or may simply not have been released. Nothing below says this child lacks a feature, and any inference that depends on a feature being genuinely absent is written as conditional.
+
+{% if counterfactual and counterfactual.applicable %}
+{% for g, v in counterfactual.genes.items() %}
+**Copy number changed a phenotype call ({{ g }}).** The call is `{{ v.observed.diplotype }}`: {{ v.observed.phenotype }}, activity score {{ v.observed.activity_score }}{% if g == 'CYP2D6' and star_cyp2d6 %}, with the duplication detected independently by Aldy (`{{ star_cyp2d6.aldy }}`) and PyPGx (`{{ star_cyp2d6.pypgx }}`){% endif %}. Without copy-number detection the same reads give `{{ v.counterfactual.diplotype }}`: **{{ v.counterfactual.phenotype }}, activity score {{ v.counterfactual.activity_score }}**. Re-running PharmCAT on the same VCF with that call changes {{ counterfactual.annotations_changed }} of {{ counterfactual.annotations_compared }} {{ g }}-dependent CPIC/DPWG annotations. Flagged (dose-adjustment or alternative-drug) annotations rise from {{ counterfactual.flagged_observed }} to {{ counterfactual.flagged_counterfactual }}; these drugs would be flagged only under the copy-number-naive call: {{ counterfactual.drugs_flagged_only_in_counterfactual | join(', ') }}.
+{% endfor %}
+{% if cf_context_rows %}
+
+| Drug (clinical context) | Source | Observed call | Copy-number-naive call |
+|---|---|---|---|
+{% for r in cf_context_rows %}
+| {{ r.drug | mdcell }} | {{ r.source | mdcell }} | {{ r.observed.classification | mdcell }}{% if r.observed.flag %} **[{{ r.observed.flag }}]**{% endif %}: {{ r.observed.recommendation | mdcell }} | {{ r.counterfactual.classification | mdcell }}{% if r.counterfactual.flag %} **[{{ r.counterfactual.flag }}]**{% endif %}: {{ r.counterfactual.recommendation | mdcell }} |
+{% endfor %}
+{% endif %}
+{% endif %}
+
+{% for c in pgx_contexts %}
+#### 2.{{ loop.index }}. {{ c.title }}
+
+*{{ c.support_label }}.*
+
+{{ c.why }}
+
+{% for n in c.narrative %}
+{{ n }}
+
+{% endfor %}
+{% if c.findings %}
+| Finding | Gene: call | Allele function | Phenotype | Result |
+|---|---|---|---|---|
+{% for f in c.findings %}
+| {{ f.label | mdcell }} | {% for g in f.genes %}{{ g.gene }}: `{{ g.diplotype | mdcell }}`{{ '<br>' if not loop.last }}{% endfor %} | {% for g in f.genes %}{{ g.alleles | mdcell }}{{ '<br>' if not loop.last }}{% endfor %} | {% for g in f.genes %}{{ g.phenotype | mdcell }}{% if g.activity %} (AS {{ g.activity }}){% endif %}{{ '<br>' if not loop.last }}{% endfor %} | **{{ f.status }}** |
+{% endfor %}
+
+{% for f in c.findings %}
+- **{{ f.label }}.**{{ (' ' ~ f.note) if f.note else '' }}{{ ' No annotation matches this genotype.' if not (f.annotations or f.literature) else '' }}
+
+{% for x in f.annotations %}
+  - {{ x.drugs }} [{{ x.genes }}], {{ x.source }}{{ (' (' ~ x.classification ~ ')') if x.classification else '' }}{{ (' **[' ~ x.flag ~ ']**') if x.flag else '' }}: {{ x.recommendation }}
+{% endfor %}
+{% for x in f.literature %}
+  - *Literature, not a guideline{{ ('; PMID ' ~ x.pmid) if x.pmid else '' }}:* {{ x.statement }}{{ (' (' ~ x.citation ~ ')') if x.citation else '' }}
+{% endfor %}
+{% if f.missing_drugs %}
+  - Not in PharmCAT's data: {{ f.missing_drugs | join(', ') }}.
+{% endif %}
+{% endfor %}
+{% if c.unannotated %}
+- **No CPIC, DPWG or FDA annotation in PharmCAT:** {{ c.unannotated | join(', ') }}. {{ c.unannotated_note }}
+{% endif %}
+{% endif %}
+{% if c.panel_gap_genes %}
+
+**Panel gap — genes bearing on this context that were not genotyped.** {{ c.panel_gap_note }}
+
+| Gene | Relevance |
+|---|---|
+{% for g, rel in c.panel_gap_genes.items() %}
+| {{ g }} | {{ rel | mdcell }} |
+{% endfor %}
+{% endif %}
+
+{% endfor %}
+#### All pharmacogene calls
 
 | Gene | Diplotype | Phenotype | Activity | Call source | PharmCAT vs Aldy |
 |---|---|---|---|---|---|
 {% for r in pgx_rows %}
-| {{ r.gene }} | {{ r.diplotype }} | {{ r.phenotype }} | {{ r.activity }} | {{ r.source }} | {{ r.agreement }}{% if r.undocumented %} (undocumented variation){% endif %} |
+| {{ r.gene | mdcell }} | {{ r.diplotype | mdcell }} | {{ r.phenotype | mdcell }} | {{ r.activity | mdcell }} | {{ r.source | mdcell }} | {{ r.agreement | mdcell }}{% if r.undocumented %} (undocumented variation){% endif %} |
 {% else %}
 | not available | | | | | |
 {% endfor %}
@@ -56,27 +172,114 @@ Sample `{{ sample }}` · generated {{ prov.generated_utc }} · pipeline {{ prov.
 
 **HLA (T1K vs OptiType, 2-field):** {% if hla %}{% for g, s in hla.class_I_agreement.items() %}{{ g }} {{ s }}{{ ", " if not loop.last }}{% endfor %}; passed to PharmCAT: {{ hla.passed_to_pharmcat | join(', ') or 'none' }}.{% else %}not available.{% endif %}
 
-**Drugs with a dose-adjustment or alternative-drug recommendation (CPIC/DPWG, from PharmCAT's structured fields):**
+{% if mt_rnr1 %}
+**MT-RNR1 (mitochondrial 12S rRNA):** genotyped from the CRAM on contig `{{ mt_rnr1.contig }}` ({{ mt_rnr1.gene_region }}), median depth {{ mt_rnr1.depth_median }}x (minimum {{ mt_rnr1.depth_min }}x); {{ mt_rnr1.cpic_alleles_tested }} CPIC alleles tested; called: {% if mt_rnr1.cpic_alleles_called %}{% for x in mt_rnr1.cpic_alleles_called %}{{ x.allele }} {{ x.state }} (AF {{ x.af }}){{ ", " if not loop.last }}{% endfor %}{% else %}none at allele fraction >= {{ mt_rnr1.thresholds.heteroplasmic_min }}{% endif %}{% if mt_rnr1.cpic_low_level %}; low-level (not called): {% for x in mt_rnr1.cpic_low_level %}{{ x.allele }} AF {{ x.af }}{{ ", " if not loop.last }}{% endfor %}{% endif %}. Passed to PharmCAT as `{{ mt_rnr1.pharmcat_outside_call }}`. Positive control: {% for x in mt_rnr1.positive_controls_observed %}m.{{ x.pos }}{{ x.ref }}>{{ x.alt }} {{ x.state }} (AF {{ x.af }}){{ ", " if not loop.last }}{% else %}none observed{% endfor %}.{% for fl in mt_rnr1.flags %} {{ fl }}.{% endfor %}
 
-{% if actionable %}
+{% endif %}
+**Other flagged CPIC/DPWG annotations (drug classes outside the contexts above, listed for completeness):**
+
+{% if actionable_outside_contexts %}
 | Drug | Source | Gene(s) | Flag | Strength | Recommendation |
 |---|---|---|---|---|---|
-{% for x in actionable %}
-| {{ x.drug }} | {{ x.source }} | {{ x.genes }} | {{ x.flag }} | {{ x.classification }} | {{ x.recommendation | replace('\n', ' ') }} |
+{% for x in actionable_outside_contexts %}
+| {{ x.drug | mdcell }} | {{ x.source | mdcell }} | {{ x.genes | mdcell }} | {{ x.flag | mdcell }} | {{ x.classification | mdcell }} | {{ x.recommendation | mdcell }} |
 {% endfor %}
 {% else %}
-None of the {{ n_guidelines }} evaluated guideline annotations carries a dose-adjustment or alternative-drug flag for this genotype.
+None.
 {% endif %}
 
 {% if ot_status in ('reported', 'example') %}
-**Open Targets candidate-drug verdicts (stage 1b), drug list `{{ ot_sum.drug_list.label }}` ({{ ot_sum.drug_list.chembl_ids_queried | join(', ') }}){% if ot_status == 'example' %}. EXAMPLE LIST: this checks the join logic and is not the Track 2 candidate set{% endif %}:** join coverage: {{ ot_cov }}. Flags: {{ ot_flags }}. Level-3 rows counted as exploratory: {{ ot_sum.level3_rows_exploratory_total }}. Full table: `pgx/open_targets/{{ sample }}.pgx_ot.verdicts.tsv`.
-{% elif ot_status == 'unrecorded' %}
-**Open Targets candidate-drug verdicts (stage 1b):** withheld. Stage-1b output exists in this directory, but it does not record which drug list produced it. Rerun `pgx_annotate.nf` with `drug_list_label` set.
-{% else %}
-**Open Targets candidate-drug verdicts (stage 1b):** not run for this output (requires the Track 2 candidate list).
+### 3. Candidate drugs by rationale (stage 1b)
+
+Drug list `{{ ot_sum.drug_list.label }}`{% if ot_status == 'example' %} — **EXAMPLE LIST:** this checks the join logic and is not the Track 2 candidate set{% endif %}. Open Targets {{ prov.databases.open_targets if prov.databases.open_targets else '' }}. **Open Targets sources its pharmacogenomics from ClinPGx (formerly PharmGKB), the same knowledge base CPIC and PharmCAT draw on**, so agreement between the two layers is not independent corroboration. Candidates are grouped by the rationale that proposes them, never ranked into a single list. Everything here is a research hypothesis, not a treatment recommendation.
+
+{% if ot_counts %}
+{{ ot_counts.candidates }} candidates: {{ ot_counts.resolved }} resolved to a ChEMBL ID through the Open Targets search API{% if ot_counts.ambiguous %}, {{ ot_counts.ambiguous }} ambiguous{% endif %}{% if ot_counts.not_found %}, {{ ot_counts.not_found }} not found{% endif %}; **{{ ot_counts.excluded_by_anti_target }} excluded by the anti-target rules**{% if ot_counts.anti_target_not_assessable %}, {{ ot_counts.anti_target_not_assessable }} not assessable{% endif %}; {{ ot_counts.queried_in_stage_1b }} queried. Join coverage: {{ ot_cov }}. Only evidence levels {{ ot_sum.asserted_levels | join(', ') }} are asserted; {{ ot_sum.level3_rows_exploratory_total }} level-3 rows were counted as exploratory and carried no further.
 {% endif %}
 
-### 2. Modifier genotypes in the mechanistic panel
+{% for grp in ot_support_groups %}
+#### {{ grp.heading }}
+
+{{ grp.blurb }}
+
+{% for ax in grp.axes %}
+##### Axis {{ ax.axis }}. {{ ax.title }}
+
+{{ ax.rationale }}
+
+{% for d in ax.drugs %}
+- **{{ d.name }}** — tier {{ d.tier }}{{ (', ' ~ d.support) if d.support else '' }}{{ (', Open Targets maximum clinical stage ' ~ d.stage) if d.stage else '' }}{{ ', investigational' if d.investigational else '' }}{{ ' — **excluded by the anti-target rules**' if d.anti_target == 'excluded' else '' }}{{ ' — anti-target rules not assessable (no mechanism of action in Open Targets)' if d.anti_target == 'not assessable' else '' }}
+{% if d.move_up %}
+  - *To raise the tier:* {{ d.move_up }}
+{% endif %}
+{% endfor %}
+
+| Drug | Tier | Support | Gene | Called | Matched OT allele | Level | Flag | Guideline text |
+|---|---|---|---|---|---|---|---|---|
+{% for d in ax.drugs %}{% for r in d.rows %}
+| {{ d.name | mdcell }} | {{ r.tier | mdcell }} | {{ r.patient_support | mdcell }} | {{ r.gene | mdcell }} | {{ r.called | mdcell }} | {{ r.matched_ot_allele | mdcell }} | {{ r.evidence_level | mdcell }} | {{ r.flag | mdcell }} | {{ (r.guideline_text or r.flag_basis) | mdcell }} |
+{% endfor %}{% endfor %}
+
+{% endfor %}
+{% endfor %}
+{% if ot_support_ungrouped %}
+#### Axes with no recorded support level
+
+These axes carry candidates whose `patient_support` was not recorded, so they are shown separately rather than being grouped with supported ones.
+
+{% for ax in ot_support_ungrouped %}
+##### Axis {{ ax.axis }}. {{ ax.title }}
+
+{{ ax.rationale }}
+
+{% for d in ax.drugs %}
+- **{{ d.name }}** — tier {{ d.tier }}{{ (', ' ~ d.support) if d.support else '' }}{{ (', Open Targets maximum clinical stage ' ~ d.stage) if d.stage else '' }}{{ ', investigational' if d.investigational else '' }}{{ ' — **excluded by the anti-target rules**' if d.anti_target == 'excluded' else '' }}{{ ' — anti-target rules not assessable (no mechanism of action in Open Targets)' if d.anti_target == 'not assessable' else '' }}
+{% if d.move_up %}
+  - *To raise the tier:* {{ d.move_up }}
+{% endif %}
+{% endfor %}
+
+| Drug | Tier | Support | Gene | Called | Matched OT allele | Level | Flag | Guideline text |
+|---|---|---|---|---|---|---|---|---|
+{% for d in ax.drugs %}{% for r in d.rows %}
+| {{ d.name | mdcell }} | {{ r.tier | mdcell }} | {{ r.patient_support | mdcell }} | {{ r.gene | mdcell }} | {{ r.called | mdcell }} | {{ r.matched_ot_allele | mdcell }} | {{ r.evidence_level | mdcell }} | {{ r.flag | mdcell }} | {{ (r.guideline_text or r.flag_basis) | mdcell }} |
+{% endfor %}{% endfor %}
+
+{% endfor %}
+{% endif %}
+{% if ot_excluded %}
+#### Anti-target exclusions
+
+The rule: **an inhibitor of a mitotic-fidelity gene is contraindicated in a mitotic-fidelity disorder.** A candidate is excluded when a mechanism-of-action row in Open Targets has an inhibitory action type and one of that row's targets carries a direct Gene Ontology biological-process annotation to {% for g, lbl in ot_rules.go_terms.items() %}`{{ g }}` {{ lbl }}{{ '; ' if not loop.last }}{% endfor %}; a second, curated rule covers targets shown in primary literature to compromise mitotic fidelity without carrying those terms. These candidates were included deliberately: their exclusion is the evidence that the filter works.
+
+{% for x in ot_excluded %}
+- **{{ x.name }}** (axis {{ x.axis }}): {{ x.reason }}
+{% endfor %}
+
+{% endif %}
+{% if ot_unresolved %}
+#### Candidates not queried
+
+{% for x in ot_unresolved %}
+- **{{ x.name }}**: {{ x.status }} — {{ x.note }}
+{% endfor %}
+
+{% endif %}
+
+Full table: `pgx/open_targets/{{ sample }}.pgx_ot.verdicts.tsv`; resolution and anti-target detail: `…track2.resolved.tsv`, `…track2.anti_target.tsv`.
+
+{% elif ot_status == 'unrecorded' %}
+### 3. Candidate drugs by rationale (stage 1b)
+
+Withheld. Stage-1b output exists in this directory, but it does not record which drug list produced it. Rerun `pgx_annotate.nf` with a drug list whose `drug_list_label` is set.
+
+{% else %}
+### 3. Candidate drugs by rationale (stage 1b)
+
+Not run for this output. Provide a candidate list (`--drug_list_file`, schema in `assets/drugs_track2.template.yml`) and run `pgx_annotate.nf`.
+
+{% endif %}
+### 4. Modifier genotypes in the mechanistic panel
 
 {% if modsum %}
 {{ modsum.variants_total }} variants ({{ modsum.variants_pass }} PASS); {{ modsum.rare }} rare; {{ modsum.functional }} functional; **{{ modsum.rare_functional }} rare and functional**:
@@ -93,11 +296,15 @@ Not available.
 {% if cnv %}
 **Structural variants and copy number (panel genes):** {{ cnv.sv_touching_panel }} Delly calls touch the panel ({{ cnv.sv_touching_panel_high_tier }} high tier, {{ cnv.sv_contradicted_by_depth }} contradicted by depth); supported: {{ cnv.sv_supported | join('; ') if cnv.sv_supported else 'none' }}. Exon noise σ = {{ cnv.exon_noise_sigma_log2_at_150bp | fmt }} log2 at 150 bp; median gene CN {{ cnv.gene_cn_median | fmt }}.
 {% for g in genecn_calls %}
-- {{ g.gene }}: {{ g.cn_call }} (candidate; requires orthogonal confirmation)
+{% if g.check %}
+- {{ g.gene }}: {{ g.cn_call }}. Read-level check: depth {{ g.check.span_window_range }}x across the run vs {{ g.check.flank_window_range }}x in the flanks ({{ g.check.span_to_flank_ratio }} of flank median; a heterozygous deletion gives ~0.5), Delly call: {{ g.check.delly_overlapping or 'none' }}. **{{ g.check.verdict | capitalize }}**{% if g.check.verdict == 'not confirmed' %}: classified as noise, not a finding{% else %}; requires orthogonal confirmation (MLPA or ddPCR){% endif %}.
+{% else %}
+- {{ g.gene }}: {{ g.cn_call }} (candidate; read-level check not available; requires orthogonal confirmation)
+{% endif %}
 {% endfor %}
 {% endif %}
 
-### 3. Mosaic aneuploidy burden
+### 5. Mosaic aneuploidy burden
 
 {% if aneu %}
 Internal control: chrX non-PAR LRR {{ aneu.internal_control_chrX_nonPAR_lrr | fmt }} (expected {{ aneu.internal_control_expected }}). {{ aneu.het_sites_used }} heterozygous sites (median depth {{ aneu.het_depth_median | fmt }}x), {{ aneu.bins_kept }} bins.
@@ -112,6 +319,10 @@ Internal control: chrX non-PAR LRR {{ aneu.internal_control_chrX_nonPAR_lrr | fm
 ![{{ figs[key].label }}]({{ figs[key].path }})
 {% endif %}{% endfor %}
 
+{% if karyotype_cmp %}
+**What a published MVA1 karyotype would look like here.** {{ karyotype_cmp.citation }} report {{ karyotype_cmp.aneuploid_metaphases_pct }}% aneuploid metaphases in a karyotype-confirmed MVA1 case, spread across about {{ karyotype_cmp.distinct_chromosomes }} distinct chromosomes; the most recurrent single event ({{ karyotype_cmp.most_recurrent_event }}) reaches {{ karyotype_cmp.most_recurrent_pct }}% of cells. Against this run's own per-arm loss detection limits — best arm {{ karyotype_cmp.best_limit | pct }}, median arm {{ karyotype_cmp.median_limit | pct }} — that most recurrent event sits at **{{ '%.2f' | format(karyotype_cmp.recurrent_vs_best) }}x the best-case limit** and a typical {{ karyotype_cmp.typical_event_pct }}% event at **{{ '%.2f' | format(karyotype_cmp.typical_vs_median) }}x the median limit**. A total burden of {{ karyotype_cmp.aneuploid_metaphases_pct }}% is invisible to this method because it is divided across many chromosomes: the burden is not small, it is spread. A null result here is therefore the expected result for MVA and is not evidence that the assay failed.
+
+{% endif %}
 **Caveats (from the analysis output):**
 {% for c in aneu.caveats %}
 - {{ c }}
@@ -120,7 +331,7 @@ Internal control: chrX non-PAR LRR {{ aneu.internal_control_chrX_nonPAR_lrr | fm
 Not available.
 {% endif %}
 
-### 4. Genome context and QC
+### 6. Genome context and QC
 
 {% if qc %}
 | Check | Value | Status | Rule |

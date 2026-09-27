@@ -50,6 +50,7 @@ ap.add_argument("--meta", required=True)
 ap.add_argument("--assert-levels", default="1A,1B")
 ap.add_argument("--include-direct-targets", action="store_true")
 ap.add_argument("--prefix", required=True)
+ap.add_argument("--candidates", help="candidates.json from resolve_candidates.py (axis, tier, anti-target verdict)")
 ap.add_argument("--drug-list-label", default="unrecorded")
 ap.add_argument("--drug-list-example", action="store_true")
 a = ap.parse_args()
@@ -194,6 +195,15 @@ def guideline(drug_names, gene):
 meta = json.load(open(a.meta))
 verdict_rows, level_counts, cov = [], [], Counter()
 flips = Counter()
+
+# axis, tier and anti-target verdict per candidate, keyed by ChEMBL ID (empty for a plain ID list)
+cand_spec = json.load(open(a.candidates)) if a.candidates else {}
+CAND = cand_spec.get("candidates") or {}
+
+
+def axis_tier(chembl):
+    c = CAND.get(chembl) or {}
+    return {"axis": c.get("axis"), "tier": c.get("tier"), "patient_support": c.get("patient_support")}
 for path in a.drugs:
     d = json.load(open(path))
     qid = d["query_id"]
@@ -220,8 +230,8 @@ for path in a.drugs:
         by_gene[gene_of(r)[0]].append(r)
 
     if not by_gene:
-        verdict_rows.append({"drug": qid, "drug_name": "; ".join(names) or None, "resolved_to": resolved,
-                             "gene": None, "called": None, "caller": None, "matched_ot_allele": None,
+        verdict_rows.append({"drug": qid, "drug_name": "; ".join(names) or None, **axis_tier(qid),
+                             "resolved_to": resolved, "gene": None, "called": None, "caller": None, "matched_ot_allele": None,
                              "evidence_level": None, "pgx_category": None, "flag": "no data",
                              "flag_basis": "no PGx rows at asserted levels" if rows else "no PGx rows in Open Targets",
                              "guideline_text": None, "ot_phenotype_text": None})
@@ -257,13 +267,34 @@ for path in a.drugs:
                 called_here = m.get("child")
                 caller_here = m.get("caller") or "force-call (CRAM)"
             verdict_rows.append({
-                "drug": qid, "drug_name": "; ".join(names), "resolved_to": resolved, "gene": gene,
+                "drug": qid, "drug_name": "; ".join(names), **axis_tier(qid),
+                "resolved_to": resolved, "gene": gene,
                 "called": called_here, "caller": caller_here,
                 "matched_ot_allele": (f"{m['key']} = {r.get('genotype')}" if r else None),
                 "evidence_level": r.get("evidenceLevel") if r else None,
                 "pgx_category": r.get("pgxCategory") if r else None,
                 "flag": flag, "flag_basis": basis, "guideline_text": gtext,
                 "ot_phenotype_text": (r.get("phenotypeText") if r else None)})
+
+# candidates the pipeline deliberately did not query: the anti-target exclusions are the evidence
+# that the filter works, and an unresolved name is a gap in the list, so both are reported as rows
+for chembl, c in sorted(CAND.items(), key=lambda kv: (str(kv[1].get("axis")), kv[1].get("name") or "")):
+    if c.get("anti_target") != "excluded":
+        continue
+    verdict_rows.append({"drug": chembl, "drug_name": c.get("matched_name") or c.get("name"),
+                         "axis": c.get("axis"), "tier": c.get("tier"),
+                         "patient_support": c.get("patient_support"), "resolved_to": f"{chembl} (as_given)",
+                         "gene": None, "called": None, "caller": None, "matched_ot_allele": None,
+                         "evidence_level": None, "pgx_category": None,
+                         "flag": "excluded (anti-target)", "flag_basis": c.get("anti_target_reason"),
+                         "guideline_text": None, "ot_phenotype_text": None})
+for u in cand_spec.get("unresolved") or []:
+    verdict_rows.append({"drug": None, "drug_name": u.get("name"), "axis": None, "tier": None,
+                         "patient_support": None,
+                         "resolved_to": "none", "gene": None, "called": None, "caller": None,
+                         "matched_ot_allele": None, "evidence_level": None, "pgx_category": None,
+                         "flag": f"not queried ({u.get('status')})", "flag_basis": u.get("note"),
+                         "guideline_text": None, "ot_phenotype_text": None})
 
 # ---------------------------------------------------------------- forward: child -> annotations
 targets = json.load(open(a.targets))["genes"]
@@ -306,12 +337,17 @@ write_tsv(a.prefix + ".evidence_levels.tsv", level_counts)
 summary = {
     # which candidate list produced these verdicts, so a report never shows an example list as the Track 2 set
     "drug_list": {"label": a.drug_list_label, "example": a.drug_list_example,
-                  "chembl_ids_queried": sorted({json.load(open(f)).get("query_id") for f in a.drugs})},
+                  "chembl_ids_queried": sorted({json.load(open(f)).get("query_id") for f in a.drugs}),
+                  **{k: v for k, v in cand_spec.items() if k in ("axes", "counts", "unresolved", "excluded",
+                                                                 "anti_target_rules", "candidates")}},
     "open_targets": meta,
     "asserted_levels": sorted(ASSERT),
     "include_direct_targets": a.include_direct_targets,
     "join_coverage": dict(cov),
     "flag_counts": dict(Counter(r["flag"] for r in verdict_rows)),
+    "candidates_by_axis": {str(ax): sorted({(r.get("drug_name") or "?") for r in verdict_rows if r.get("axis") == ax})
+                           for ax in sorted({r.get("axis") for r in verdict_rows if r.get("axis") is not None},
+                                            key=str)},
     "strand_flipped_rows": dict(flips),
     "level3_rows_exploratory_total": sum(r.get("level_3", 0) for r in level_counts),
 }

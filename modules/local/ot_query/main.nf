@@ -22,7 +22,10 @@ process OT_QUERY {
 
     script:
     safe = id.replaceAll(/[^A-Za-z0-9_-]/, '_').take(60)
-    def args = mode == 'drug' ? "drug --chembl ${id}" : (mode == 'target' ? "target --genes '${id}'" : 'meta')
+    def args = mode == 'drug' ? "drug --chembl ${id}"
+             : mode == 'target' ? "target --genes '${id}'"
+             : mode == 'literature' ? "literature --diseases '${id}'"
+             : 'meta'
     """
     ot_query.py --out ot_${mode}_${safe}.json ${args}
 
@@ -40,6 +43,8 @@ process OT_QUERY {
         echo '{"api_version": "stub", "data_release": "stub"}' > ot_${mode}_${safe}.json
     elif [ "${mode}" = "drug" ]; then
         echo '{"query_id": "${id}", "found": true, "resolution": [], "rows": []}' > ot_${mode}_${safe}.json
+    elif [ "${mode}" = "literature" ]; then
+        echo '{"diseases": []}' > ot_${mode}_${safe}.json
     else
         echo '{"genes": {}}' > ot_${mode}_${safe}.json
     fi

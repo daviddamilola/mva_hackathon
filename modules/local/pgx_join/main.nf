@@ -12,6 +12,9 @@ process PGX_JOIN {
     path drug_jsons
     path target_json
     path meta_json
+    path candidates_json
+    val drug_list_label
+    val drug_list_example
 
     output:
     tuple val(meta), path("${meta.id}.pgx_ot.verdicts.tsv"), emit: verdicts
@@ -22,12 +25,12 @@ process PGX_JOIN {
 
     script:
     def direct = params.ot_include_direct_targets ? '--include-direct-targets' : ''
-    def example = params.drug_list_example ? '--drug-list-example' : ''
+    def example = drug_list_example ? '--drug-list-example' : ''
     """
     pgx_join.py --calls ${calls_json} --pharmcat-report ${pharmcat_report} \\
         --vcf ${stage1a_vcf} ${ot_vcf} --drugs ${drug_jsons} --targets ${target_json} --meta ${meta_json} \\
-        --assert-levels '${params.ot_assert_levels}' ${direct} \\
-        --drug-list-label '${params.drug_list_label}' ${example} --prefix ${meta.id}.pgx_ot
+        --candidates ${candidates_json} --assert-levels '${params.ot_assert_levels}' ${direct} \\
+        --drug-list-label '${drug_list_label}' ${example} --prefix ${meta.id}.pgx_ot
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
