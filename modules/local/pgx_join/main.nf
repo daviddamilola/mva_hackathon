@@ -22,10 +22,12 @@ process PGX_JOIN {
 
     script:
     def direct = params.ot_include_direct_targets ? '--include-direct-targets' : ''
+    def example = params.drug_list_example ? '--drug-list-example' : ''
     """
     pgx_join.py --calls ${calls_json} --pharmcat-report ${pharmcat_report} \\
         --vcf ${stage1a_vcf} ${ot_vcf} --drugs ${drug_jsons} --targets ${target_json} --meta ${meta_json} \\
-        --assert-levels '${params.ot_assert_levels}' ${direct} --prefix ${meta.id}.pgx_ot
+        --assert-levels '${params.ot_assert_levels}' ${direct} \\
+        --drug-list-label '${params.drug_list_label}' ${example} --prefix ${meta.id}.pgx_ot
 
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":

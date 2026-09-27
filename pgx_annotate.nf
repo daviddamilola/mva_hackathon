@@ -30,6 +30,9 @@ workflow {
     if (!params.drugs) {
         error "Provide candidate drugs as ChEMBL IDs, e.g. -params-file drugs.yml with 'drugs: [CHEMBL185, ...]'"
     }
+    if (!params.drug_list_label) {
+        error "Name the drug list with drug_list_label (e.g. track2_candidates_v1); it is recorded in the summary and shown in the report"
+    }
     def drugs = (params.drugs instanceof List ? params.drugs : params.drugs.toString().tokenize(','))
         .collect { it.toString().trim().toUpperCase() }.unique()
     drugs.each { if (!(it ==~ /CHEMBL\d+/)) error "Not a ChEMBL ID: ${it}" }

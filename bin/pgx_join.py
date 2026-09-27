@@ -36,6 +36,7 @@ import argparse
 import csv
 import gzip
 import json
+import os
 import re
 from collections import Counter, defaultdict
 
@@ -49,6 +50,8 @@ ap.add_argument("--meta", required=True)
 ap.add_argument("--assert-levels", default="1A,1B")
 ap.add_argument("--include-direct-targets", action="store_true")
 ap.add_argument("--prefix", required=True)
+ap.add_argument("--drug-list-label", default="unrecorded")
+ap.add_argument("--drug-list-example", action="store_true")
 a = ap.parse_args()
 ASSERT = set(a.assert_levels.split(","))
 COMP = str.maketrans("ACGT", "TGCA")
@@ -301,6 +304,9 @@ write_tsv(a.prefix + ".verdicts.tsv", verdict_rows)
 write_tsv(a.prefix + ".forward_annotations.tsv", fwd_rows)
 write_tsv(a.prefix + ".evidence_levels.tsv", level_counts)
 summary = {
+    # which candidate list produced these verdicts, so a report never shows an example list as the Track 2 set
+    "drug_list": {"label": a.drug_list_label, "example": a.drug_list_example,
+                  "chembl_ids_queried": sorted({json.load(open(f)).get("query_id") for f in a.drugs})},
     "open_targets": meta,
     "asserted_levels": sorted(ASSERT),
     "include_direct_targets": a.include_direct_targets,
