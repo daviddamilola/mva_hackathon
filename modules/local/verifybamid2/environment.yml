@@ -1,0 +1,7 @@
+name: verifybamid2
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - bioconda::verifybamid2=2.0.3
+  - conda-forge::llvm-openmp=23.1.2   # osx-arm64 recipe omits the OpenMP runtime its binary links against

@@ -1,0 +1,7 @@
+name: somalier
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - bioconda::somalier=0.3.5
+  - conda-forge::python=3.12.11
