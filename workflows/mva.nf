@@ -14,6 +14,7 @@ include { ANEUPLOIDY        } from '../subworkflows/local/aneuploidy'
 include { GENOME_QC         } from '../subworkflows/local/genome_qc'
 include { PROVENANCE        } from '../modules/local/provenance'
 include { REPORT            } from '../modules/local/report'
+include { OT_QUERY as OT_LITERATURE } from '../modules/local/ot_query'
 
 workflow MVA {
     main:
@@ -117,20 +118,31 @@ workflow MVA {
 
         def stage1b = [ "pgx_ot.summary.json", "pgx_ot.verdicts.tsv" ]
             .collect { file("${params.outdir}/pgx/open_targets/${params.sample_id}.${it}") }.findAll { it.exists() }
+        // publication counts for the disease terms: a quantitative measure of unmet need
+        OT_LITERATURE(Channel.of([ 'literature', params.unmet_need_disease_ids ]))
+        ch_versions = ch_versions.mix(OT_LITERATURE.out.versions)
+
         ch_report_in = Channel.empty().mix(
             PGX_CALL.out.calls.map { m, t, j -> [ t, j ] }.flatten(),
             PGX_CALL.out.report.map { it[1] },
             PGX_CALL.out.star_compare.map { it[1] },
             PGX_CALL.out.hla_files,
             PGX_CALL.out.forcecall_summary,
+            PGX_CALL.out.mt_rnr1,
+            PGX_CALL.out.counterfactual,
             MODIFIER_PANEL.out.summary,
             MODIFIER_PANEL.out.rare_functional.map { it[1] },
+            MODIFIER_PANEL.out.nmd,
+            MODIFIER_PANEL.out.domain_map,
+            MODIFIER_PANEL.out.domain_figure,
             ANEUPLOIDY.out.summary.map { it[1] },
             ANEUPLOIDY.out.arms_json,
             ANEUPLOIDY.out.figures.flatten(),
             ANEUPLOIDY.out.cnv_summary,
+            ANEUPLOIDY.out.cn_candidates,
             ANEUPLOIDY.out.gene_cn.map { it[1] },
             GENOME_QC.out.qc_json.map { it[1] },
+            OT_LITERATURE.out.json.map { it[2] },
             Channel.fromList(stage1b)
         ).collect().map { files -> [ sample_meta, files ] }
         REPORT(ch_report_in, PROVENANCE.out.json, file("${projectDir}/assets/report", checkIfExists: true))

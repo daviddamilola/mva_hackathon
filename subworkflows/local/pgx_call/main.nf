@@ -25,6 +25,8 @@ include { T1K_REFERENCE       } from '../../../modules/local/t1k_reference'
 include { T1K_RUN             } from '../../../modules/local/t1k_run'
 include { OPTITYPE_RUN        } from '../../../modules/local/optitype_run'
 include { HLA_RECONCILE       } from '../../../modules/local/hla_reconcile'
+include { MT_RNR1_CALL        } from '../../../modules/local/mt_rnr1_call'
+include { PHARMCAT_COUNTERFACTUAL } from '../../../modules/local/pharmcat_counterfactual'
 
 workflow PGX_CALL {
     take:
@@ -61,14 +63,25 @@ workflow PGX_CALL {
         ch_hla_outside = ALDY_PARSE.out.calls.map { meta, j, o -> [ meta, [] ] }
     }
 
+    // MT-RNR1 (aminoglycosides): allele fractions on the mitochondrial contig -> PharmCAT outside call
+    MT_RNR1_CALL(ch_valid_cram, file(params.mt_rnr1_cpic_alleles, checkIfExists: true), ch_ref)
+
+    ch_pharmcat_in = PGX_FORCE_CALL.out.vcf
+        .join(ALDY_PARSE.out.calls)
+        .join(ch_hla_outside)
+        .join(MT_RNR1_CALL.out.outside)
+        .map { meta, vcf, csi, aldy_json, aldy_outside, hla_outside, mt_outside ->
+            [ meta, vcf, csi, [ aldy_outside ] + (hla_outside ? [ hla_outside ] : []) + [ mt_outside ] ] }
+
     PHARMCAT_REFERENCE(ch_ref)
-    PHARMCAT_RUN(
-        PGX_FORCE_CALL.out.vcf
-            .join(ALDY_PARSE.out.calls)
-            .join(ch_hla_outside)
-            .map { meta, vcf, csi, aldy_json, aldy_outside, hla_outside -> [ meta, vcf, csi, [ aldy_outside ] + (hla_outside ? [ hla_outside ] : []) ] },
-        PHARMCAT_SITES.out.chr_map,
-        PHARMCAT_REFERENCE.out.fasta
+    PHARMCAT_RUN(ch_pharmcat_in, PHARMCAT_SITES.out.chr_map, PHARMCAT_REFERENCE.out.fasta)
+
+    // what copy-number detection changed: same VCF, duplicated outside calls collapsed to one copy
+    PHARMCAT_COUNTERFACTUAL(
+        PHARMCAT_RUN.out.report
+            .join(ch_pharmcat_in.map { meta, vcf, csi, outside -> [ meta, outside ] })
+            .combine(PHARMCAT_RUN.out.preprocessed)
+            .map { meta, report, outside, pre -> [ meta, report, pre, outside ] }
     )
 
     PGX_RECONCILE(
@@ -99,6 +112,8 @@ workflow PGX_CALL {
         VALIDATE_CRAM_REF.out.versions,
         PHARMCAT_SITES.out.versions,
         PGX_FORCE_CALL.out.versions,
+        MT_RNR1_CALL.out.versions,
+        PHARMCAT_COUNTERFACTUAL.out.versions,
         ALDY_GENOTYPE.out.versions.first(),
         ALDY_PARSE.out.versions,
         PHARMCAT_REFERENCE.out.versions,
@@ -114,5 +129,7 @@ workflow PGX_CALL {
     star_compare = ch_star_compare               // [ meta, aldy_vs_pypgx.tsv ]
     hla_files  = params.skip_hla ? Channel.empty() : HLA_RECONCILE.out.summary.mix(HLA_RECONCILE.out.calls)
     forcecall_summary = PGX_FORCE_CALL.out.summary
+    mt_rnr1    = MT_RNR1_CALL.out.json
+    counterfactual = PHARMCAT_COUNTERFACTUAL.out.json
     versions   = ch_versions
 }

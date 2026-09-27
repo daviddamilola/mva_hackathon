@@ -13,6 +13,7 @@ include { ALPHAMISSENSE_PANEL } from '../../../modules/local/alphamissense_panel
 include { SPLICEAI            } from '../../../modules/local/spliceai'
 include { VEP_ANNOTATE        } from '../../../modules/local/vep_annotate'
 include { MODIFIER_REPORT     } from '../../../modules/local/modifier_report'
+include { VARIANT_MECHANISM   } from '../../../modules/local/variant_mechanism'
 
 workflow MODIFIER_PANEL {
     take:
@@ -45,12 +46,23 @@ workflow MODIFIER_PANEL {
     )
     MODIFIER_REPORT(VEP_ANNOTATE.out.vcf, panel_bed)
 
+    // NMD sensitivity of any PTC, and where the variants fall in the protein's domains
+    VARIANT_MECHANISM(
+        VEP_ANNOTATE.out.vcf.join(MODIFIER_REPORT.out.rare_functional),
+        file(params.spliceai_annotation, checkIfExists: true),
+        file(params.protein_domains, checkIfExists: true)
+    )
+
     ch_versions = Channel.empty().mix(PANEL_VARIANTS.out.versions, GNOMAD_PANEL.out.versions, ALPHAMISSENSE_PANEL.out.versions,
-                                      SPLICEAI.out.versions, VEP_ANNOTATE.out.versions, MODIFIER_REPORT.out.versions)
+                                      SPLICEAI.out.versions, VEP_ANNOTATE.out.versions, MODIFIER_REPORT.out.versions,
+                                      VARIANT_MECHANISM.out.versions)
 
     emit:
     rare_functional = MODIFIER_REPORT.out.rare_functional
     all             = MODIFIER_REPORT.out.all
     summary         = MODIFIER_REPORT.out.summary
+    nmd             = VARIANT_MECHANISM.out.nmd_json
+    domain_map      = VARIANT_MECHANISM.out.domain_json
+    domain_figure   = VARIANT_MECHANISM.out.figure
     versions        = ch_versions
 }

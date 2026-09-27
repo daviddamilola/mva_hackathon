@@ -6,6 +6,7 @@
  *   MOSDEPTH (bins, fast mode | panel exons)            <- validated CRAM, explicit reference
  *   ANEUPLOIDY_MODEL (GC-corrected LRR + beta-binomial BAF -> per-arm cell fraction, CI, detection limit)
  *   DELLY_CALL (genome-wide SVs) -> GENE_CN (exon CN + SVs overlapping panel genes)
+ *   CN_CANDIDATE_CHECK (depth step in the reads for each exon-run CN candidate)
  */
 include { FETCH_RESOURCE                } from '../../../modules/local/fetch_resource'
 include { BIN_ANNOTATE                  } from '../../../modules/local/bin_annotate'
@@ -14,6 +15,7 @@ include { MOSDEPTH as MOSDEPTH_EXONS    } from '../../../modules/local/mosdepth'
 include { ANEUPLOIDY_MODEL              } from '../../../modules/local/aneuploidy_model'
 include { DELLY_CALL                    } from '../../../modules/local/delly_call'
 include { GENE_CN                       } from '../../../modules/local/gene_cn'
+include { CN_CANDIDATE_CHECK            } from '../../../modules/local/cn_candidate_check'
 
 workflow ANEUPLOIDY {
     take:
@@ -47,9 +49,11 @@ workflow ANEUPLOIDY {
     DELLY_CALL(ch_valid_cram, ch_ref, res.excl.first())
     GENE_CN(MOSDEPTH_EXONS.out.regions, BIN_ANNOTATE.out.exons, ANEUPLOIDY_MODEL.out.bins_depth, ANEUPLOIDY_MODEL.out.bins,
             DELLY_CALL.out.vcf.first(), file(params.gene_panel_bed, checkIfExists: true), ANEUPLOIDY_MODEL.out.arms_json)
+    CN_CANDIDATE_CHECK(ch_valid_cram.join(GENE_CN.out.genes), GENE_CN.out.exons, GENE_CN.out.sv, ch_ref)
 
     ch_versions = Channel.empty().mix(BIN_ANNOTATE.out.versions, MOSDEPTH_BINS.out.versions, ANEUPLOIDY_MODEL.out.versions,
-                                      DELLY_CALL.out.versions, GENE_CN.out.versions)
+                                      DELLY_CALL.out.versions, GENE_CN.out.versions,
+                                      CN_CANDIDATE_CHECK.out.versions)
 
     emit:
     summary  = ANEUPLOIDY_MODEL.out.summary
@@ -58,6 +62,7 @@ workflow ANEUPLOIDY {
     gene_cn  = GENE_CN.out.genes
     arms_json = ANEUPLOIDY_MODEL.out.arms_json
     cnv_summary = GENE_CN.out.summary
+    cn_candidates = CN_CANDIDATE_CHECK.out.json
     mosdepth_bins_summary = MOSDEPTH_BINS.out.summary
     coverage = MOSDEPTH_BINS.out.summary
     versions = ch_versions

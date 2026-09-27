@@ -552,6 +552,33 @@
                     "description": "Output"
                 }
             }
+        },
+        "mt_rnr1_options": {
+            "title": "MT-RNR1 (aminoglycosides)",
+            "type": "object",
+            "properties": {
+                "mt_contig": {
+                    "type": "string",
+                    "default": "M",
+                    "description": "Mitochondrial contig name in the reference (rCRS numbering)"
+                },
+                "mt_rnr1_start": {
+                    "type": "integer",
+                    "default": 648,
+                    "description": "MT-RNR1 start (rCRS)"
+                },
+                "mt_rnr1_end": {
+                    "type": "integer",
+                    "default": 1601,
+                    "description": "MT-RNR1 end (rCRS)"
+                },
+                "mt_rnr1_cpic_alleles": {
+                    "type": "string",
+                    "format": "file-path",
+                    "default": "${projectDir}/assets/mt_rnr1_cpic_alleles.tsv",
+                    "description": "CPIC MT-RNR1 allele table (snapshot of the CPIC API, sha256 in the header)"
+                }
+            }
         }
     },
     "allOf": [
@@ -587,6 +614,9 @@
         },
         {
             "$ref": "#/$defs/qc_report_options"
+        },
+        {
+            "$ref": "#/$defs/mt_rnr1_options"
         }
     ]
 }
