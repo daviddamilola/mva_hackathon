@@ -6,15 +6,45 @@ how the anti-target rules exclude candidates. It records no genotypes.
 
 ## The problem this stage answers
 
-BUB1B is not a druggable target. Open Targets reports it `isEssential: true`, with no approved drug,
-no advanced clinical candidate, no structure with a ligand, no high- or medium-quality pocket and no
-chemical probes. In the EMBL-EBI Perturbation Catalogue it is a significant hit in 1,167 of 1,194
-cell lines (~98%). Complete knockout in mouse is embryonic-lethal with full penetrance.
+Track 2 asks for mechanism and drug repurposing. For this gene the repurposing framing is forced
+rather than chosen, and the report now says so with numbers fetched at run time
+(`ot_query.py tractability`, rendered as report section 2) rather than asserted in prose.
 
-Worse, the drugged neighbourhood points the wrong way. Every drugged node near BubR1 in the mitotic
-machinery — PLK1, AURKB, CDK1, TTK, KIF11, TOP2A, CENP-E, BIRC5 — is targeted by **inhibitors**. The
-disease is loss of function; almost every available drug reduces function further. That asymmetry is
-the central problem, so the pipeline encodes it as a rule rather than leaving it to prose.
+Open Targets records BUB1B as `isEssential: true` with **no approved drug, no advanced clinical
+candidate and no Phase 1 candidate in any modality**. The detail is more interesting than a flat
+"undruggable", and the report prints the whole table:
+
+| Modality | Evidence present | Notable absences |
+|---|---|---|
+| Small molecule | High-Quality Ligand, Druggable Family | Structure with Ligand, High-/Med-Quality Pocket |
+| Antibody | none | all nine assessed labels negative |
+| PROTAC / degrader | Literature, UniProt Ubiquitination, Database Ubiquitination | Small Molecule Binder, Half-life Data |
+| Other clinical modality | none | all three assessed labels negative |
+
+Two things follow. Small-molecule tractability is not zero — there is a high-quality ligand and it is
+a druggable family — but no pocket and no structure with a ligand are recorded, and nothing has been
+carried forward, so there is nothing to repurpose *against the target itself*. And the one modality
+with positive evidence beyond ligandability is **degradation**, the inverse of what a loss-of-function
+disease needs: a PROTAC against BubR1 would remove the protein this child is short of. That inversion
+is what makes the protein-stabilisation axis worth stating, and it is why no axis proposes acting on
+BUB1B directly.
+
+Complete knockout in mouse is embryonic-lethal with full penetrance, and in the EMBL-EBI Perturbation
+Catalogue BUB1B is a significant hit in 1,167 of 1,194 cell lines (~98%), so the target is not one to
+inhibit further even if it could be drugged.
+
+The drugged neighbourhood points the wrong way too. Every drugged node near BubR1 in the mitotic
+machinery — PLK1, AURKB, CDK1, TTK, KIF11, TOP2A, CENP-E, BIRC5 — is targeted by **inhibitors**,
+developed to reduce mitotic fidelity in dividing tumour cells. This disease is a loss of mitotic
+fidelity; almost every drug near the pathway would deepen the defect. That asymmetry is the central
+problem, so the pipeline encodes it as a rule rather than leaving it to prose.
+
+**The strategy is therefore compensation, not replacement.** No molecule restores BubR1 kinase
+activity. A repurposing hypothesis here acts on something other than the broken protein so the
+consequences of its loss are reduced: restoring some full-length protein from the nonsense allele,
+stabilising the partially functional protein the missense allele makes, reducing the cellular cost of
+the resulting aneuploidy, or treating downstream consequences that are druggable where the spindle
+checkpoint is not. Each axis in the candidate list is one such point of leverage.
 
 ## The candidate list
 

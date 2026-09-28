@@ -76,6 +76,12 @@ def resolve(rel):
 
 prov = json.load(open(a.provenance))
 unmet = jload("ot_literature_MONDO_0009759_MONDO_0000141.json")
+tract = jload("ot_tractability_BUB1B.json")
+# small molecule first: it is the modality a repurposing candidate would most plausibly use
+MODALITY_ORDER = ["SM", "AB", "PR", "OC"]
+_bm = (tract or {}).get("by_modality") or {}
+tract_mod = [(_bm[k]["name"], _bm[k]) for k in MODALITY_ORDER if k in _bm]
+tract_mod += [(v["name"], v) for k, v in sorted(_bm.items()) if k not in MODALITY_ORDER]
 unmet_rows = sorted((unmet or {}).get("diseases") or [], key=lambda d: d.get("publications") or 0)
 qc = jload("qc/genome_qc.json")
 pgx = jload(f"pgx/{S}.pgx_calls.json")
@@ -317,7 +323,7 @@ for r in star or []:
     star_counts[r["status"]] = star_counts.get(r["status"], 0) + 1
 
 ctx = {
-    "sample": S, "prov": prov, "unmet_rows": unmet_rows, "qc": qc, "qc_checks": (qc or {}).get("checks") or [],
+    "sample": S, "prov": prov, "unmet_rows": unmet_rows, "tract": tract, "tract_mod": tract_mod, "qc": qc, "qc_checks": (qc or {}).get("checks") or [],
     "pgx": pgx, "pgx_rows": pgx_rows, "pgx_summary": (pgx or {}).get("summary"),
     "star_counts": star_counts, "star_rows": [r for r in (star or []) if r["status"] not in ("same",)],
     "hla": hla, "hla_rows": [r for r in (hla_calls or []) if r["gene"] in ("HLA-A", "HLA-B", "HLA-C")],

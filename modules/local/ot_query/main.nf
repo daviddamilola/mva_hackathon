@@ -25,6 +25,7 @@ process OT_QUERY {
     def args = mode == 'drug' ? "drug --chembl ${id}"
              : mode == 'target' ? "target --genes '${id}'"
              : mode == 'literature' ? "literature --diseases '${id}'"
+             : mode == 'tractability' ? "tractability --gene '${id}'"
              : 'meta'
     """
     ot_query.py --out ot_${mode}_${safe}.json ${args}
@@ -45,6 +46,8 @@ process OT_QUERY {
         echo '{"query_id": "${id}", "found": true, "resolution": [], "rows": []}' > ot_${mode}_${safe}.json
     elif [ "${mode}" = "literature" ]; then
         echo '{"diseases": []}' > ot_${mode}_${safe}.json
+    elif [ "${mode}" = "tractability" ]; then
+        echo '{"gene": "${id}", "found": false}' > ot_${mode}_${safe}.json
     else
         echo '{"genes": {}}' > ot_${mode}_${safe}.json
     fi

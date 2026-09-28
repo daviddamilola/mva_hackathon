@@ -14,7 +14,8 @@ include { ANEUPLOIDY        } from '../subworkflows/local/aneuploidy'
 include { GENOME_QC         } from '../subworkflows/local/genome_qc'
 include { PROVENANCE        } from '../modules/local/provenance'
 include { REPORT            } from '../modules/local/report'
-include { OT_QUERY as OT_LITERATURE } from '../modules/local/ot_query'
+include { OT_QUERY as OT_LITERATURE   } from '../modules/local/ot_query'
+include { OT_QUERY as OT_TRACTABILITY } from '../modules/local/ot_query'
 
 workflow MVA {
     main:
@@ -120,7 +121,9 @@ workflow MVA {
             .collect { file("${params.outdir}/pgx/open_targets/${params.sample_id}.${it}") }.findAll { it.exists() }
         // publication counts for the disease terms: a quantitative measure of unmet need
         OT_LITERATURE(Channel.of([ 'literature', params.unmet_need_disease_ids ]))
-        ch_versions = ch_versions.mix(OT_LITERATURE.out.versions)
+        // can the causal gene itself be drugged? the answer is the premise of the candidate list
+        OT_TRACTABILITY(Channel.of([ 'tractability', params.mechanism_gene ]))
+        ch_versions = ch_versions.mix(OT_LITERATURE.out.versions, OT_TRACTABILITY.out.versions)
 
         ch_report_in = Channel.empty().mix(
             PGX_CALL.out.calls.map { m, t, j -> [ t, j ] }.flatten(),
@@ -143,6 +146,7 @@ workflow MVA {
             ANEUPLOIDY.out.gene_cn.map { it[1] },
             GENOME_QC.out.qc_json.map { it[1] },
             OT_LITERATURE.out.json.map { it[2] },
+            OT_TRACTABILITY.out.json.map { it[2] },
             Channel.fromList(stage1b)
         ).collect().map { files -> [ sample_meta, files ] }
         REPORT(ch_report_in, PROVENANCE.out.json, file("${projectDir}/assets/report", checkIfExists: true))

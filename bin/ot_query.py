@@ -4,6 +4,7 @@
 Subcommands
   meta                        release/API version -> JSON
   literature --diseases IDs   publication count per disease (an unmet-need measure) -> JSON
+  tractability --gene SYMBOL  can the gene itself be drugged? essentiality + tractability -> JSON
   drug   --chembl ID          drug(chemblId){pharmacogenomics}. If the ID has no PGx rows, its parent
                               molecule and then child molecules are queried; the resolution is recorded,
                               never applied silently.
@@ -94,6 +95,53 @@ def cmd_literature(args):
                          for d in rows]}
 
 
+TRACT_Q = """query($e: String!) {
+  target(ensemblId: $e) {
+    id approvedSymbol biotype
+    isEssential
+    tractability { label modality value }
+  }
+}"""
+
+MODALITY = {"SM": "small molecule", "AB": "antibody", "PR": "PROTAC / degrader",
+            "OC": "other clinical modality"}
+
+
+def cmd_tractability(args):
+    """Can the causal gene itself be drugged? The answer decides whether a repurposing strategy has
+    to act on something other than the target, which is the premise of the whole candidate list."""
+    ens = symbol_to_ensembl([args.gene])[args.gene]
+    if not ens:
+        return {"gene": args.gene, "ensembl_id": None, "found": False}
+    t = gql(TRACT_Q, {"e": ens})["target"] or {}
+    tr = t.get("tractability") or []
+    by_modality = {}
+    for m in sorted({x["modality"] for x in tr}):
+        rows = [x for x in tr if x["modality"] == m]
+        by_modality[m] = {"name": MODALITY.get(m, m),
+                          "assessed": len(rows),
+                          "positive": [x["label"] for x in rows if x["value"]],
+                          "negative": [x["label"] for x in rows if not x["value"]]}
+    clinical = [lbl for lbl in ("Approved Drug", "Advanced Clinical", "Phase 1 Clinical")
+                if any(x["label"] == lbl and x["value"] for x in tr)]
+    return {"gene": t.get("approvedSymbol") or args.gene, "ensembl_id": ens, "found": True,
+            "biotype": t.get("biotype"), "is_essential": t.get("isEssential"),
+            "clinically_tractable_labels": clinical,
+            "has_clinical_stage_drug": bool(clinical),
+            "by_modality": by_modality,
+            "queried_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
+
+
+def symbol_to_ensembl(genes):
+    m = gql("query($t: [String!]!) { mapIds(queryTerms: $t, entityNames: [\"target\"]) { mappings { term hits { id name entity } } } }",
+            {"t": genes})["mapIds"]["mappings"]
+    out = {}
+    for mp in m:
+        hits = [h for h in mp["hits"] if h["entity"] == "target" and h["name"] == mp["term"]]
+        out[mp["term"]] = hits[0]["id"] if hits else None
+    return out
+
+
 def cmd_target(args):
     genes = [g.strip() for g in args.genes.split(",") if g.strip()]
     m = gql("query($t: [String!]!) { mapIds(queryTerms: $t, entityNames: [\"target\"]) { mappings { term hits { id name entity } } } }",
@@ -117,9 +165,11 @@ sub.add_parser("meta")
 p = sub.add_parser("drug"); p.add_argument("--chembl", required=True)
 p = sub.add_parser("target"); p.add_argument("--genes", required=True)
 p = sub.add_parser("literature"); p.add_argument("--diseases", required=True)
+p = sub.add_parser("tractability"); p.add_argument("--gene", required=True)
 ap.add_argument("--out", required=True)
 args = ap.parse_args()
-res = {"meta": cmd_meta, "drug": cmd_drug, "target": cmd_target, "literature": cmd_literature}[args.cmd](args)
+res = {"meta": cmd_meta, "drug": cmd_drug, "target": cmd_target, "literature": cmd_literature,
+       "tractability": cmd_tractability}[args.cmd](args)
 with open(args.out, "w") as fh:
     json.dump(res, fh, indent=1)
 print(f"{args.cmd}: written {args.out}")
