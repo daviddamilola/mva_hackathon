@@ -34,9 +34,11 @@ The VCF was renamed to `chr` contigs and preprocessed (`pharmcat_vcf_preprocesso
 `-refFna` set to a `chr`-named bgzipped copy of the same masked reference). PharmCAT 3.4.0
 (data version 2026-07-13) then ran with CPIC, DPWG and FDA sources.
 
-Aldy 4.8.3 (`genotype -p wgs --genome hg38 -r <reference>`; solver OR-Tools 9.15) called 17
-genes directly from the CRAM: CYP2D6, CYP2C19, CYP2C9, CYP2B6, CYP3A5, CYP4F2, TPMT, NUDT15,
-DPYD, UGT1A1, SLCO1B1, G6PD, VKORC1, ABCG2, RYR1, CACNA1S and IFNL3. Aldy's CYP2D6 call
+Aldy 4.8.3 (`genotype -p wgs --genome hg38 -r <reference>`; solver OR-Tools 9.15) called 19
+genes directly from the CRAM: CYP2D6, CYP2C19, CYP2C9, CYP2B6, CYP3A4, CYP3A5, CYP4F2, TPMT,
+NUDT15, DPYD, UGT1A1, SLCO1B1, G6PD, VKORC1, ABCG2, RYR1, CACNA1S, IFNL3 and NAT2. CYP3A4 and
+NAT2 were added on 2026-10-02 (see "Gene panel" below); MT-RNR1 is excluded because Aldy
+addresses the mitochondrion as `MT` while this reference names it `M`. Aldy's CYP2D6 call
 (copy-number aware; tandem duplications converted to PharmCAT `xN` notation) was passed to
 PharmCAT as an outside call, because PharmCAT does not call CYP2D6 from VCF. An Aldy call is
 passed on only when it returns a single major solution.
@@ -44,7 +46,7 @@ passed on only when it returns a single major solution.
 **Second star-allele caller (Stargazer successor).** Stargazer itself can't be installed
 non-interactively: it needs an academic registration at UW and is not on bioconda, PyPI or GitHub.
 PyPGx 0.27.0 (bioconda, MIT), the same author's maintained successor that reimplements Stargazer's
-genotyping and SV/CNV calling, runs in parallel with Aldy on the same 17 genes. The steps:
+genotyping and SV/CNV calling, runs in parallel with Aldy on the same gene set. The steps:
 1. The PyPGx gene regions are cut from the CRAM into a BAM with the explicit reference (samtools
    1.22.1). PyPGx's depth step has no reference option, so this avoids implicit `UR:`-based CRAM
    decoding.
@@ -144,6 +146,42 @@ The join rules are covered by 21 synthetic tests (`tests/unit/test_pgx_join.py`)
 | — | ChEMBL parent/child resolution | e.g. CHEMBL1425 (mercaptopurine anhydrous) has no PGx rows; its child CHEMBL1200751 has 178. The resolution is reported, never silent. |
 | — | PharmCAT preprocessor given our reference | Keeps one explicit reference for every step, instead of PharmCAT downloading its own. |
 
+## Gene panel: how it was chosen, and a correction (2026-10-02)
+
+The original 17-gene Aldy set was adopted as a conventional core pharmacogene panel. **No rationale
+was recorded for it at the time**, and it does not follow from any single rule: it is neither
+everything Aldy supports (40 genes ship with 4.8.3), nor the Aldy/PharmCAT intersection (21), nor
+the set with a CPIC guideline (four of the 17 — CYP4F2, IFNL3, VKORC1, and CYP3A4 once added — have
+none).
+
+Reviewing it exposed a real defect. PharmCAT was already calling three genes from the force-called
+VCF that `params.pgx_genes` then discarded before the report:
+
+| Gene | Call | Phenotype | Why it matters here |
+|---|---|---|---|
+| **NAT2** | `*5/*5` | **Poor Metabolizer** | acetylates the sulfamethoxazole in co-trimoxazole, standard Pneumocystis prophylaxis during myelosuppression; FDA annotation keyed to NAT2 |
+| CYP3A4 | `*1/*1` | Normal Metabolizer | co-metabolises vincristine with CYP3A5, on which the neuropathy finding rests |
+| CFTR | Reference/Reference | ivacaftor non-responsive | explains ivacaftor's presence among the original flags; no other relevance here |
+
+The NAT2 omission mattered: the report showed a G6PD row for co-trimoxazole while suppressing a
+Poor Metaboliser call bearing on the same drug. All three are now reported. NAT2 and CYP3A4 were
+also added to Aldy and PyPGx so that a call driving a clinical statement is not single-caller;
+both reach **three-caller agreement** (PharmCAT `*5/*5` = Aldy `*5/*5` = PyPGx `*5/*5` for NAT2).
+CFTR is reported from PharmCAT alone and the table marks it `pharmcat_only`.
+
+**Aldy cannot call MT-RNR1 on this reference.** Aldy ships an `mt-rnr1` definition, but it addresses
+the mitochondrion as `MT` while this reference names it `M`, so pysam raises `invalid contig MT`.
+MT-RNR1 is therefore excluded from `aldy_genes`, and PyPGx provides the cross-check instead
+(`Reference/Reference`, agreeing with the dedicated caller's `Reference`). This also corrects an
+earlier claim in this project that MT-RNR1 was absent from Aldy's panel: it is present, and the
+reason for the bespoke caller is that neither Aldy nor PyPGx models heteroplasmy, which is the
+clinically decisive quantity.
+
+**Status-column fix.** A finding whose phenotype is abnormal but which carries no structured
+CPIC/DPWG flag previously rendered as "no genotype-based change". It now renders the phenotype
+itself (e.g. "Poor Metabolizer; no guideline flag"). This affected NAT2 and the CYP2C19
+voriconazole row.
+
 ## Results (aggregate; details in `results/pgx/`)
 
 | Metric | Value |
@@ -155,8 +193,8 @@ The join rules are covered by 21 synthetic tests (`tests/unit/test_pgx_join.py`)
 | PharmCAT vs Aldy | 14 agree, **0 disagree**, 2 not comparable (nomenclature), 1 outside call (CYP2D6), 2 no call (HLA-A/B) |
 | Aldy ambiguous calls | 0 |
 | HLA class I (T1K vs OptiType, 2-field) | 3/3 genes concordant (HLA-A, -B, -C); HLA-A and HLA-B passed to PharmCAT |
-| PGx genes with a call after HLA typing | 19/19 (14 agree, 2 not comparable, 3 outside calls: CYP2D6, HLA-A, HLA-B) |
-| Aldy vs PyPGx (17 genes) | 10 same, 4 same after normalisation, 2 not comparable (nomenclature), **1 different** |
+| PGx genes reported | 23/23 (16 agree, 2 not comparable, 4 outside calls: CYP2D6, HLA-A, HLA-B, MT-RNR1, 1 PharmCAT-only: CFTR) |
+| Aldy vs PyPGx (20 compared) | 12 same, 4 same after normalisation, 2 not comparable (nomenclature), 1 PyPGx-only (MT-RNR1: Aldy cannot address contig `M`), **1 different** |
 | CYP2D6 structure | Aldy and PyPGx independently call the same diplotype with a whole-gene duplication (PyPGx CNV: `WholeDup1`) |
 
 The single Aldy/PyPGx difference is a **definition-coverage** difference, not a calling

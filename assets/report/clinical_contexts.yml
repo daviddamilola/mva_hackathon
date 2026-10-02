@@ -35,14 +35,16 @@ contexts:
       the most frequent. Two calls that carry no guideline flag become clinically pointed in this
       regimen, and several reassuring calls are reportable findings in their own right.
     findings:
-      - label: Vincristine neurotoxicity (CYP3A5)
-        genes: [CYP3A5]
+      - label: Vincristine neurotoxicity (CYP3A5, with CYP3A4)
+        genes: [CYP3A5, CYP3A4]
         drugs: [tacrolimus]
         note: >-
           Vincristine is the V in VAC. PharmCAT carries no vincristine annotation, so no vincristine
           guideline row appears below; the tacrolimus annotation is shown only because it is what
           PharmCAT holds for this gene. The vincristine relevance rests on the literature cited
-          here, not on a CPIC or DPWG guideline.
+          here, not on a CPIC or DPWG guideline. CYP3A4 is shown alongside CYP3A5 because
+          vincristine is metabolised by both; the cited association is with CYP3A5 expression
+          status, and CYP3A4 is reported here as context rather than as a second risk signal.
         literature:
           - statement: >-
               Low CYP3A5 expression genotype was associated with increased vincristine-induced
@@ -195,9 +197,15 @@ contexts:
       - label: Antifungal prophylaxis (CYP2C19)
         genes: [CYP2C19]
         drugs: [voriconazole]
-      - label: Co-trimoxazole prophylaxis (G6PD)
-        genes: [G6PD]
+      - label: Co-trimoxazole prophylaxis (G6PD, NAT2)
+        genes: [G6PD, NAT2]
         drugs: [sulfamethoxazole / trimethoprim]
+        note: >-
+          Co-trimoxazole is standard Pneumocystis prophylaxis during myelosuppressive therapy, so
+          this is a drug this child is likely to receive. NAT2 governs acetylation of the
+          sulfamethoxazole component; the FDA annotation below is keyed to it. NAT2 was called by
+          PharmCAT from the start but was absent from this report's gene list until 2026-10-02, so
+          earlier versions showed only the G6PD row for this drug.
       - label: Rasburicase and oxidant drugs (G6PD)
         genes: [G6PD]
         drugs: [rasburicase]

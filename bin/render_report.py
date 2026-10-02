@@ -199,6 +199,12 @@ def clean(t):
 
 # how each context's support for THIS child is labelled; absence of a feature from the released HPO
 # set is never rendered as absence of that feature in the child
+# phenotype words that mean "not the reference expectation"; used so an abnormal call is never
+# summarised as "no genotype-based change"
+NON_NORMAL = ("poor metaboliz", "intermediate metaboliz", "rapid metaboliz", "ultrarapid",
+              "decreased function", "poor function", "no function", "increased risk",
+              "uncertain susceptibility", "non-expresser")
+
 SUPPORT_LABEL = {
     "released_feature": "supported by the released clinical features",
     "syndrome_only": "supported by the MVA1 literature, not by the released features",
@@ -251,10 +257,15 @@ for c in ctx_cfg["contexts"] if pc_report else []:
         guideline_flag = any(x["flag"] and x["source"] in ("CPIC", "DPWG") for x in anns)
         label_flag = any(x["flag"] and x["source"].startswith("FDA") for x in anns)
         known = [d for d in f["drugs"] if drug_known(d)]
+        # an abnormal phenotype must not render as "no change" just because no structured flag is set:
+        # that is the empty-flag-column failure this report exists to avoid
+        abnormal = [g for g in [gene_view(x) for x in f["genes"]]
+                    if any(k in (g["phenotype"] or "").lower() for k in NON_NORMAL)]
         status = ("flagged by guideline" if guideline_flag else
                   "FDA text only; no CPIC/DPWG flag" if label_flag else
                   # a cited literature risk outranks "no change": the guideline is silent, not reassuring
                   "literature risk; no guideline flag" if f.get("literature") else
+                  f"{abnormal[0]['phenotype']}; no guideline flag" if anns and abnormal else
                   "no genotype-based change" if anns else
                   "no annotation matches this genotype" if known else
                   "no PharmCAT-annotated drug in this context")
@@ -286,8 +297,9 @@ released_ctx = [c for c in pgx_contexts if c["patient_support"] == "released_fea
 pgx_negatives = [f"{f['label']} ({c['title'].lower()})" for c in released_ctx for f in c["findings"]
                  if f["status"] == "no genotype-based change"]
 pgx_flagged = [f"{f['label']}: {f['status']}" for c in released_ctx for f in c["findings"]
-               if f["status"] in ("flagged by guideline", "FDA text only; no CPIC/DPWG flag",
-                                  "literature risk; no guideline flag")]
+               if f["status"] == "flagged by guideline"
+               or f["status"].endswith("no guideline flag")
+               or f["status"] == "FDA text only; no CPIC/DPWG flag"]
 pgx_literature = [{"context": c["title"], "label": f["label"], "literature": f["literature"]}
                   for c in released_ctx for f in c["findings"] if f["literature"]]
 context_drugs = {d for c in ctx_cfg["contexts"] for f in c.get("findings") or [] for d in f["drugs"]}
