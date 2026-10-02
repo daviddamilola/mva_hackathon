@@ -94,9 +94,12 @@ contexts:
       1b.
     panel_gap:
       note: >-
-        Genes bearing on this regimen that are NOT in the 17-gene panel and are therefore not
-        genotyped anywhere in this report. A negative result elsewhere in this report says nothing
-        about them: they were never examined.
+        Genes bearing on this regimen that lie outside the pharmacogene panel and so carry no call
+        in this report. They were scoped out, not unmeasured: the sequencing is whole-genome and
+        covers them at full depth. A negative result elsewhere in this report says nothing about
+        them, but neither does their absence here imply risk — they were simply not analysed.
+        Stage 1b force-calls any ClinPGx-annotated position for a candidate drug regardless of
+        panel membership, so it closes part of this gap when it runs.
       genes:
         ABCB1: transport of vincristine, actinomycin-D and etoposide
         RARG: anthracycline cardiotoxicity
