@@ -176,7 +176,8 @@ VCF that `params.pgx_genes` then discarded before the report:
 The NAT2 omission mattered: the report showed a G6PD row for co-trimoxazole while suppressing a
 Poor Metaboliser call bearing on the same drug. All three are now reported. NAT2 and CYP3A4 were
 also added to Aldy and PyPGx so that a call driving a clinical statement is not single-caller;
-both reach **three-caller agreement** (PharmCAT `*5/*5` = Aldy `*5/*5` = PyPGx `*5/*5` for NAT2).
+all three callers agree (PharmCAT `*5/*5` = Aldy `*5/*5` = PyPGx `*5/*5` for NAT2) — but see
+"What concordance establishes" below for what that is and is not worth.
 CFTR is reported from PharmCAT alone and the table marks it `pharmcat_only`.
 
 **Aldy cannot call MT-RNR1 on this reference.** Aldy ships an `mt-rnr1` definition, but it addresses
@@ -191,6 +192,52 @@ clinically decisive quantity.
 CPIC/DPWG flag previously rendered as "no genotype-based change". It now renders the phenotype
 itself (e.g. "Poor Metabolizer; no guideline flag"). This affected NAT2 and the CYP2C19
 voriconazole row.
+
+## What concordance establishes, and what it does not
+
+Three callers agreeing is **reproducibility, not validation**, and the report should not be read as
+if it were the latter.
+
+PharmCAT, Aldy and PyPGx all read the same reads from the same alignment against the same
+reference, and their allele definitions share provenance: Aldy ships PharmVar 6.2.14 tables,
+PharmCAT's calls here come from ClinPGx, and PyPGx descends from the same PharmVar/Stargazer
+lineage. So concordance controls for implementation bugs in any one caller. It cannot detect:
+
+- **reference bias or mismapping**, because all three inherit the same alignment;
+- **a shared definition gap**, because the definitions are not independent.
+
+This project's own RYR1 result demonstrates the mechanism rather than refuting it. The single
+discordance was definition coverage — PyPGx 0.27.0's RYR1 table does not define the variant that
+PharmCAT and Aldy both call. Concordance tracks definition tables, so where the tables agree in
+their blind spots, the callers will agree in being wrong.
+
+The regions where this matters most are exactly the ones with paralogues that defeat short-read
+mapping: CYP2D6/CYP2D7, NAT1/NAT2, CYP2A6/CYP2A7. All three callers can fail together there.
+
+**What is missing is an anchor to known truth.** Nothing in this project has been run against a
+sample with consensus genotypes. The decisive control is a GeT-RM/Coriell reference sample with
+CDC consensus PGx genotypes put through this identical pipeline; until that exists, every accuracy
+statement here rests on internal consistency. This is recorded as the largest open gap rather than
+worked around.
+
+## Ancestry and allele-definition coverage
+
+Star-allele definition tables are markedly better populated for European haplotypes, so the
+reassurance carried by a reference call is **ancestry-dependent**, and this report has no machinery
+to express that. A `*1/*1` is reported identically whatever the sample's ancestry, when the prior
+probability that a real decreased-function allele sits outside the definition table is not equal
+across populations.
+
+Alleles that are enriched outside European populations and are variably covered include DPYD
+`c.557A>G` (rs115232898), CYP2C9 `*5`, `*6`, `*8` and `*11`, CYP2D6 `*17` and `*29`, and much of the
+NAT2 haplotype distribution.
+
+For **this** sample the genome QC branch predicts EUR at p = 0.956 (AMR 0.044), which is where
+definition coverage is at its best, so the practical risk here is at the low end. That is a
+statement about this sample, not about the pipeline: run on a non-European genome, the same report
+would make equally confident reference calls with no qualifier attached. Treat it as a
+generalisability limitation, and the ancestry estimate itself is a coarse superpopulation
+assignment, not a haplotype-level statement.
 
 ## Results (aggregate; details in `results/pgx/`)
 
