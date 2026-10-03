@@ -30,6 +30,8 @@ process PGX_FORCE_CALL {
     path "${meta.id}.pgx_forcecall.constrained.vcf.gz"  , emit: constrained
     path "${meta.id}.pgx_forcecall.unconstrained.vcf.gz", emit: unconstrained
     tuple val(meta), path("${meta.id}.off_definition.tsv"), emit: off_definition
+    path "${meta.id}.pgx_forcecall.evidence.tsv"        , emit: evidence
+    path "${meta.id}.pgx_forcecall.evidence.summary.json", emit: evidence_summary
     path "${meta.id}.pgx_forcecall.summary.json"        , emit: summary
     path "versions.yml"                                 , emit: versions
 
@@ -47,7 +49,8 @@ process PGX_FORCE_CALL {
     rm pileup.bcf
 
     merge_forcecalls.py ${meta.id}.pgx_forcecall.constrained.vcf.gz ${meta.id}.pgx_forcecall.unconstrained.vcf.gz \\
-        merged.vcf ${meta.id}.off_definition.tsv
+        merged.vcf ${meta.id}.off_definition.tsv ${meta.id}.pgx_forcecall.evidence.tsv \\
+        ${params.pgx_min_depth} ${params.pgx_min_gq}
     bgzip -c merged.vcf > ${meta.id}.pgx_forcecall.vcf.gz
     bcftools index ${meta.id}.pgx_forcecall.vcf.gz
 
@@ -76,6 +79,7 @@ process PGX_FORCE_CALL {
         mpileup_args: "--fasta-ref -R regions -T positions -a FORMAT/AD,FORMAT/DP"
         call_args_constrained: "-m -A -C alleles -T alleles --ploidy GRCh38 -S sex"
         call_args_unconstrained: "-m --ploidy GRCh38 -S sex"
+        min_evidence: "depth >= ${params.pgx_min_depth}, GQ >= ${params.pgx_min_gq} (GQ derived from PL); failing positions become no-calls"
     END_VERSIONS
     """
 

@@ -27,8 +27,18 @@ done twice from the same pileup:
 Both calls used `--ploidy GRCh38` with the sample's sex (XY; chrX haploid). At any position
 where the unconstrained genotype carried a non-reference allele absent from PharmCAT's
 definition, the unconstrained record replaced the constrained one. PharmCAT then reports the
-undocumented variation instead of assuming reference. PharmCAT's missing-to-reference options
-were not used, because no position was left uncalled.
+undocumented variation instead of assuming reference.
+
+**Minimum evidence, and why "no missing genotypes" proves nothing on its own.** Constrained
+calling emits a genotype at every definition position *by construction*, so the absence of
+missingness is a property of the method, not of the data. It cannot be used to argue that the
+hom-ref calls are safe, and the clinically dangerous direction here is precisely a false reference
+call producing a spurious `*1`. Every position is therefore tested against a stated threshold —
+depth ≥ `pgx_min_depth` and GQ ≥ `pgx_min_gq`, GQ derived from PL because bcftools does not emit it
+here — and a position failing either test is set to a no-call. PharmCAT's missing-to-reference
+options are deliberately **not** used, so a no-call reaches PharmCAT as missing and is handled
+explicitly rather than silently becoming reference. Per-position evidence is written to
+`…pgx_forcecall.evidence.tsv` so the claim can be checked instead of taken on trust.
 
 The VCF was renamed to `chr` contigs and preprocessed (`pharmcat_vcf_preprocessor`, with
 `-refFna` set to a `chr`-named bgzipped copy of the same masked reference). PharmCAT 3.4.0
@@ -187,10 +197,14 @@ voriconazole row.
 | Metric | Value |
 |---|---|
 | CRAM ↔ reference M5 validation | pass (2,580/2,580) |
-| PharmCAT positions genotyped from CRAM | 1,226/1,226; 0 missing genotypes; depth median 42 (range 15–90) |
+| PharmCAT positions genotyped from CRAM | 1,226/1,226; **0 below the evidence threshold** (depth ≥ 10, GQ ≥ 20), so 0 no-calls |
+| Depth at definition positions | diploid: min 26, p05 31, median 45. Haploid (chrX non-PAR, 171 positions): min 15 |
+| GQ at definition positions (derived from PL) | min 50, p05 96, median 138; none below 20 |
+| Heterozygote allele balance | 18 hets, range 0.26–0.76. The extremes are CYP2D6 positions, where three gene copies (`*4/*35x2`) predict 1:2 and 2:1 ratios — the skew is the duplication, not dropout |
+| Hom-ref calls carrying any alt read | 42 of 1,203; maximum alt fraction 0.056, an order of magnitude below any heterozygote threshold |
 | Positions with an allele outside PharmCAT's definitions | 1 (flagged by PharmCAT as undocumented variation) |
-| Genes in the panel | 19 (17 callable by Aldy + HLA-A, HLA-B) |
-| PharmCAT vs Aldy | 14 agree, **0 disagree**, 2 not comparable (nomenclature), 1 outside call (CYP2D6), 2 no call (HLA-A/B) |
+| Genes in the panel | 23 (19 callable by Aldy + HLA-A, HLA-B, MT-RNR1, CFTR) |
+| PharmCAT vs Aldy | 16 agree, **0 disagree**, 2 not comparable (nomenclature), 4 outside calls (CYP2D6, HLA-A/B, MT-RNR1), 1 PharmCAT-only (CFTR) |
 | Aldy ambiguous calls | 0 |
 | HLA class I (T1K vs OptiType, 2-field) | 3/3 genes concordant (HLA-A, -B, -C); HLA-A and HLA-B passed to PharmCAT |
 | PGx genes reported | 23/23 (16 agree, 2 not comparable, 4 outside calls: CYP2D6, HLA-A, HLA-B, MT-RNR1, 1 PharmCAT-only: CFTR) |
