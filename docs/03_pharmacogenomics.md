@@ -193,6 +193,34 @@ CPIC/DPWG flag previously rendered as "no genotype-based change". It now renders
 itself (e.g. "Poor Metabolizer; no guideline flag"). This affected NAT2 and the CYP2C19
 voriconazole row.
 
+## Reference-allele naming between callers
+
+Star-allele tables do not agree on what the reference allele is called, and the mismatch is
+invisible until a sample carries one. PharmVar renamed **CYP2C19\*1 to \*38**: Aldy ships the new
+name (its no-mutation allele is `CYP2C19*38.001`), PharmCAT reports the old one. The same genotype
+would therefore be scored as a caller disagreement.
+
+This sample escapes it — the call is `*2/*17`, so neither allele is reference and both callers
+happen to print identical names. The agreement is real but accidental. Any sample carrying a
+reference CYP2C19 allele, which is the commonest allele, would have produced a spurious
+disagreement in the most frequently called gene, in a table the report presents as a quality
+signal.
+
+Both normalisers (`pgx_reconcile.py` and `compare_star_alleles.py`) now map the two names onto one
+another for comparison only; the diplotypes shown in the report stay as each caller reported them.
+The table is **gene-scoped and deliberately narrow**:
+
+| Gene | Equated | Why |
+|---|---|---|
+| CYP2C19 | `*38` ≡ `*1` | PharmVar renaming of the same reference allele |
+| NAT2 | **not equated** | Aldy's no-mutation allele is `*1`, PyPGx defaults to `*4`/`*12`; those are distinct haplotypes, not synonyms, and equating them would manufacture agreement |
+| IFNL3, DPYD | **not equated** | wild-type naming is already handled by the existing reference and alias paths; IFNL3 remains `not_comparable`, which is the honest result |
+
+`tests/unit/test_star_allele_normalisation.py` pins both directions — that CYP2C19 `*1`/`*38` are
+equated, and that the mapping does not leak to other genes or collapse genuinely different
+genotypes. Emptying the table fails 5 of the 11 tests; the gene-scoping and NAT2 guards still pass,
+since those assert the mapping does *not* over-apply.
+
 ## What concordance establishes, and what it does not
 
 Three callers agreeing is **reproducibility, not validation**, and the report should not be read as

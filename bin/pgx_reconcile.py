@@ -40,6 +40,20 @@ with open(offdef_path) as fh:
     for row in csv.DictReader(fh, delimiter="\t"):
         offdef.setdefault(row["chrom"], []).append(row)
 
+# Reference-allele synonyms, per gene. PharmVar renamed CYP2C19*1 to *38: Aldy ships the new name,
+# PharmCAT reports the old one, so the same genotype would otherwise be scored as a disagreement.
+# Deliberately narrow and gene-scoped. NAT2 is NOT listed: Aldy's no-mutation allele is *1 while
+# PyPGx defaults to *4/*12, and those are distinct haplotypes rather than synonyms, so equating them
+# would manufacture agreement. IFNL3 and DPYD wild-type names are handled by the existing reference
+# and alias paths instead.
+REF_ALLELE_SYNONYMS = {"CYP2C19": {"*38": "*1"}}
+
+
+def canon_star(gene, allele):
+    """Map a caller-specific reference-allele name onto the shared one, for comparison only."""
+    return REF_ALLELE_SYNONYMS.get((gene or "").upper(), {}).get(allele, allele)
+
+
 STAR = re.compile(r"^\*\d+[A-Z]?(x\d+)?$")
 
 
@@ -48,20 +62,20 @@ def expand(allele):
     return [m.group(1)] * int(m.group(2)) if m else [allele]
 
 
-def norm_aldy(dip):
+def norm_aldy(dip, gene=""):
     alleles = []
     for hap in dip.split("/"):
         for a in hap.split("+"):
             a = re.sub(r"\.\d+$", "", a.strip())      # suballele -> core allele
-            alleles.append(a)
+            alleles.append(canon_star(gene, a))
     return sorted(alleles)
 
 
-def norm_pharmcat(label):
+def norm_pharmcat(label, gene=""):
     # PharmCAT labels: '*1/*17', '*4/*35x2', 'c.6178G>T (heterozygous)', 'Reference/Reference'
     alleles = []
     for a in label.split("/"):
-        alleles.extend(expand(a.strip()))
+        alleles.extend(canon_star(gene, x) for x in expand(a.strip()))
     return sorted(alleles)
 
 
@@ -92,18 +106,19 @@ def pharmcat_alias_star(label):
     return sorted(["*1", a.group(2)] if m.group(2).lower() == "heterozygous" else [a.group(2)] * 2)
 
 
-def semantic_pharmcat(label):
+def semantic_pharmcat(label, gene=""):
     m = ZYGOSITY.match(label.strip())
     if m:
         t = sem_token(m.group(1))
         toks = ["reference", t] if m.group(2).lower() == "heterozygous" else [t, t]
     else:
-        toks = [sem_token(p) for p in label.split("/")]
+        toks = [sem_token(canon_star(gene, p.strip())) for p in label.split("/")]
     return None if any(t is None for t in toks) else sorted(toks)
 
 
-def semantic_aldy(dip):
-    toks = [sem_token(p) for h in dip.split("/") for p in h.split("+")]
+def semantic_aldy(dip, gene=""):
+    toks = [sem_token(canon_star(gene, re.sub(r"\.\d+$", "", p.strip())))
+            for h in dip.split("/") for p in h.split("+")]
     return None if any(t is None for t in toks) else sorted(toks)
 
 
@@ -138,15 +153,15 @@ for gene in genes:
     elif aldy_dip and not pc_labels:
         flag = "aldy_only"
     else:
-        pc_sets = [pharmcat_alias_star(l) or norm_pharmcat(l) for l in pc_labels]
-        al_set = norm_aldy(aldy_dip)
+        pc_sets = [pharmcat_alias_star(l) or norm_pharmcat(l, gene) for l in pc_labels]
+        al_set = norm_aldy(aldy_dip, gene)
         if all(is_star(s) for s in pc_sets) and is_star(al_set):
             flag = "agree" if al_set in pc_sets else "disagree"
             basis = "star alleles" + (" (PharmCAT star alias)" if any(pharmcat_alias_star(l) for l in pc_labels) else "")
         else:
             # explicit semantic normalisation for non-star nomenclature (see module docstring)
-            pc_sem = [semantic_pharmcat(l) for l in pc_labels]
-            al_sem = semantic_aldy(aldy_dip)
+            pc_sem = [semantic_pharmcat(l, gene) for l in pc_labels]
+            al_sem = semantic_aldy(aldy_dip, gene)
             if any(s is None for s in pc_sem) or al_sem is None:
                 flag, basis = "not_comparable", "nomenclatures cannot be mapped without assumptions"
             elif al_sem in pc_sem:

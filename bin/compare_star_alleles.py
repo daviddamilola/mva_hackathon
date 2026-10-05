@@ -101,11 +101,25 @@ def read_other(path, gene_arg):
     sys.exit(f"Unrecognised format for {path}: columns {list(rows[0])}")
 
 
+# Reference-allele synonyms, per gene. PharmVar renamed CYP2C19*1 to *38: Aldy ships the new name,
+# PharmCAT reports the old one, so the same genotype would otherwise be scored as a disagreement.
+# Deliberately narrow and gene-scoped. NAT2 is NOT listed: Aldy's no-mutation allele is *1 while
+# PyPGx defaults to *4/*12, and those are distinct haplotypes rather than synonyms, so equating them
+# would manufacture agreement. IFNL3 and DPYD wild-type names are handled by the existing reference
+# and alias paths instead.
+REF_ALLELE_SYNONYMS = {"CYP2C19": {"*38": "*1"}}
+
+
+def canon_star(gene, allele):
+    """Map a caller-specific reference-allele name onto the shared one, for comparison only."""
+    return REF_ALLELE_SYNONYMS.get((gene or "").upper(), {}).get(allele, allele)
+
+
 REF_SYN = {"reference", "ref", "ference"}
 UNMAPPABLE = re.compile(r"^(?:[acgt]+|h\d+)$")
 
 
-def normalise(diplotype):
+def normalise(diplotype, gene=""):
     """Semantic allele multiset, or None if any allele cannot be mapped without assumptions."""
     if not diplotype:
         return None
@@ -118,11 +132,11 @@ def normalise(diplotype):
         low = re.sub(r"^\*", "", core(t.strip())).lower()
         low = re.sub(r"\s*\(reference\)$", "", low)
         if al:
-            out.append(al.group(1))
+            out.append(canon_star(gene, al.group(1)))
         elif low in REF_SYN:
             out.append("*1" if use_star else "REF")
         elif re.match(r"^\d+[a-z]?$", low):
-            out.append("*" + low.upper())
+            out.append(canon_star(gene, "*" + low.upper()))
         else:
             tok = re.sub(r"[^a-z0-9]", "", re.sub(r"^c\.", "", low))
             if UNMAPPABLE.match(tok):
@@ -158,7 +172,7 @@ for gene in sorted(set(aldy) | set(other)):
     elif x == y:
         status = "same"
     else:
-        nx, ny = normalise(aldy.get(gene)), normalise(other.get(gene))
+        nx, ny = normalise(aldy.get(gene), gene), normalise(other.get(gene), gene)
         if nx is None or ny is None:
             status = "not_comparable"
         elif nx == ny or (len(ny) == 1 and len(set(nx)) == 1 and nx[0] == ny[0]) or (len(nx) == 1 and len(set(ny)) == 1 and ny[0] == nx[0]):
