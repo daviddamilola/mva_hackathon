@@ -32,6 +32,13 @@ Provenance → References → Acknowledgement.
 - **Missing is explicit.** Inputs are staged into the REPORT task and resolved by file name. A
   missing input is listed at the top of the report under "Missing inputs", and each dependent
   section prints "not available". Nothing is filled in.
+- **Methods covers every results section.** `assets/report/methods.j2` is the single source for both
+  templates, and it carries one paragraph per branch of the pipeline, including the variant
+  mechanism: where the domain coordinates come from, how NMD sensitivity is computed, and how the
+  readthrough characterisation derives the stop codon, its 3' context and the scored products. Every
+  version and threshold in it is interpolated from the provenance record or the step's own output,
+  so a methods claim cannot drift from what ran. When a results section is added, its methods
+  paragraph is added with it.
 - **Citations follow APA 7.** Literature lives in `assets/report/literature.yml` as structured
   entries (authors, year, sentence-case title, journal, volume, issue, pages, DOI or URL),
   generated from NCBI E-utilities and Crossref records rather than transcribed. Any rendered text
