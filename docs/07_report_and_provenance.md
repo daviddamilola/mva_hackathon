@@ -38,7 +38,9 @@ Provenance → References → Acknowledgement.
   readthrough characterisation derives the stop codon, its 3' context and the scored products. Every
   version and threshold in it is interpolated from the provenance record or the step's own output,
   so a methods claim cannot drift from what ran. When a results section is added, its methods
-  paragraph is added with it.
+  paragraph is added with it. One trap: the templates render with `trim_blocks`, so a line ending
+  in a block tag swallows the newline after it and merges the next paragraph into itself. Lines
+  that end a paragraph with `{% endif %}` close with `{{ '' }}` to keep the break.
 - **Citations follow APA 7.** Literature lives in `assets/report/literature.yml` as structured
   entries (authors, year, sentence-case title, journal, volume, issue, pages, DOI or URL),
   generated from NCBI E-utilities and Crossref records rather than transcribed. Any rendered text
