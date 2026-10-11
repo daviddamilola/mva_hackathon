@@ -1,7 +1,8 @@
 # 03 — Pharmacogenomics (stage 1a calling, stage 1b Open Targets annotation)
 
-Status: **implemented and run** (2026-09-26). Stage 1a runs inside `main.nf`. Stage 1b is a
-separate entry point, `pgx_annotate.nf`, re-run whenever the candidate drug list changes.
+Status: **implemented and run** (stage 1a 2026-09-26; stage 1b on the rhabdomyosarcoma regimen list
+2026-10-06). Stage 1a runs inside `main.nf`. Stage 1b is a separate entry point, `pgx_annotate.nf`,
+re-run whenever the drug list changes (doc 08).
 
 This document holds methods, design decisions and **aggregate** figures only. Diplotypes,
 genotypes and verdicts are subject-derived, so they stay in `results/pgx/` (gitignored).
@@ -131,8 +132,10 @@ Rows were joined to the child's genotypes as follows:
   gene falling back to `UNKNOWN`.
 - **Direct-target rows:** rows with `isDirectTarget = true` are excluded from verdicts and
   counted, because this is a metaboliser panel.
-- **Evidence levels:** only levels 1A and 1B are asserted. Level-3 rows are counted and reported
-  as exploratory, and carried no further.
+- **Evidence levels:** only levels 1A and 1B are asserted. Rows at any other level (2A, 2B, 3, 4)
+  are counted per drug, with the genes behind level-2 rows named, and carried no further.
+- **Axis roles:** a drug on a `regimen` axis (treatment already given) is queried whatever the
+  anti-target rules say; the rule match is reported as a note (doc 08).
 
 **Verdict flags** (per drug × gene) come from PharmCAT's structured guideline fields for the
 child's genotype, not from matching keywords in free text:
@@ -290,10 +293,24 @@ The single Aldy/PyPGx difference is a **definition-coverage** difference, not a 
 difference. PyPGx's own input VCF carries the heterozygous variant (AD 33/19), but PyPGx 0.27.0's
 RYR1 table (49 alleles) does not define it, so PyPGx reports Reference/Reference. PharmCAT 3.4.0
 (newer CPIC RYR1 definitions) and Aldy both call it.
-| Stage 1b test run (3 example ChEMBL IDs, not the candidate set) | 3/3 drugs had PGx rows (1 via child-molecule resolution); 17/17 called genes had an asserted Open Targets match; 277 extra positions force-called; 0 strand flips; 842 level-3 rows counted as exploratory |
+| Stage 1b, candidate list v1 (`assets/drugs_track2.yml`, Open Targets 26.09, 2026-10-08) | 16/16 names resolved (11 regimen, 5 proposed); 10/16 drugs had any ClinPGx row, **2/16 at an asserted level** (irinotecan, UGT1A1; simvastatin, SLCO1B1; both matched the PharmCAT call, no flag); 20/23 called genes had an asserted forward match (HLA-A, HLA-B, MT-RNR1 did not); 531 extra positions force-called; 0 strand flips; 2,792 rows below the asserted levels counted and not joined; anti-target rule matched 3 regimen agents (etoposide, doxorubicin, irinotecan), reported as notes; 0 proposed candidates excluded, 6 drugs not assessable |
+| Stage 1b, regimen list alone (`assets/drugs_regimen.yml`, 2026-10-06) | 10/10 resolved; 1/10 at an asserted level (irinotecan); 503 extra positions force-called; superseded in the report by the list above |
 
-The example drug list reproduces the evidence-level counts in the brief exactly:
-fluorouracil 94 level-1A / 604 level-3, and mercaptopurine 53 / 119.
+**What the regimen run shows.** The nine agents PharmCAT does not annotate have no ClinPGx
+annotation at level 1A or 1B either. So the two layers agree, and for the expected reason: both
+draw on ClinPGx, and PharmCAT's drug set is the CPIC, DPWG and FDA guideline set, which these
+agents are simply not in. What ClinPGx holds for them sits below the asserted levels:
+methotrexate (MTHFR and SLC19A1 at 2A, ATIC at 2B), doxorubicin (SLC28A3 at 2B), and level 3 or 4
+rows for the rest; dactinomycin and ifosfamide have no row at all. Those level-2 genes are two of
+the report's named panel-gap genes, and their positions are now genotyped in
+`results/pgx/open_targets/forcecall/`, but they are not joined, because the assertion threshold
+is a design decision (`params.ot_assert_levels`, default `1A,1B`), not a data gap. Lowering it to
+include 2A/2B is a one-parameter change; the report names the genes so that choice can be made
+with the evidence in view.
+
+An earlier test run on three example ChEMBL IDs (`assets/drugs_example.yml`, 2026-09-26) checked
+the join logic and reproduced the evidence-level counts in the brief exactly (fluorouracil 94
+level-1A / 604 level-3; mercaptopurine 53 / 119). Its outputs were removed on 2026-10-02 as stale.
 
 ## Limitations
 

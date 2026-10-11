@@ -51,6 +51,8 @@ ap.add_argument("--assert-levels", default="1A,1B")
 ap.add_argument("--include-direct-targets", action="store_true")
 ap.add_argument("--prefix", required=True)
 ap.add_argument("--candidates", help="candidates.json from resolve_candidates.py (axis, tier, anti-target verdict)")
+ap.add_argument("--mt-rnr1", help="MT_RNR1_CALL json: per-allele observations on the mitochondrial contig")
+ap.add_argument("--mt-alleles", help="CPIC MT-RNR1 allele table with the rsid column")
 ap.add_argument("--drug-list-label", default="unrecorded")
 ap.add_argument("--drug-list-example", action="store_true")
 a = ap.parse_args()
@@ -115,7 +117,37 @@ def called_star(gene):
 
 
 # ---------------------------------------------------------------- OT rows
+# Open Targets' aminoglycoside rows carry an rsID but no target and no coordinates, so a
+# coordinate-based join cannot place them. The mitochondrial caller already genotyped every CPIC
+# allele directly from the CRAM, so those rows are matched by rsID against its own result instead.
+MT_BY_RS, MT_OBS = {}, {}
+if a.mt_alleles:
+    with open(a.mt_alleles) as fh:
+        rd = csv.DictReader((l for l in fh if not l.startswith("#")), delimiter="\t")
+        for r in rd:
+            if (r.get("rsid") or "").strip():
+                MT_BY_RS[r["rsid"].strip()] = {"allele": r["name"], "pos": int(r["pos"]),
+                                               "ref": r["ref"], "alt": r["alt"]}
+if a.mt_rnr1:
+    _mt = json.load(open(a.mt_rnr1))
+    _thr = (_mt.get("thresholds") or {}).get("heteroplasmic_min", 0.05)
+    for x in _mt.get("cpic_alleles") or []:
+        MT_OBS[x["allele"]] = {"af": float(x.get("af") or 0), "depth": x.get("depth"),
+                               "state": x.get("state"), "detected": float(x.get("af") or 0) >= _thr}
+
+
+def mt_row(row):
+    """The MT-RNR1 allele an rsID-only row refers to, if the mitochondrial caller tested it."""
+    rs = (row.get("variantRsId") or "").strip()
+    if not rs or row.get("genotypeId") or row.get("haplotypeId"):
+        return None
+    hit = MT_BY_RS.get(rs)
+    return dict(hit, rsid=rs, observed=MT_OBS.get(hit["allele"])) if hit else None
+
+
 def gene_of(row):
+    if mt_row(row):
+        return "MT-RNR1", "rsid"
     if row.get("haplotypeId") and "*" in row["haplotypeId"]:
         return row["haplotypeId"].split("*")[0], "haplotypeId"
     if row.get("target") and row["target"].get("approvedSymbol"):
@@ -144,6 +176,18 @@ def match_row(row):
             kind = "allele"
         return {"status": "matched" if ok else "not_matched", "key": f"{row['haplotypeId']} ({kind})",
                 "child": child_label, "nonref": nonref, "caller": star[0][3]}
+    mt = mt_row(row)
+    if mt:
+        obs = mt.get("observed")
+        if obs is None:
+            return {"status": "not_genotyped", "key": f"{mt['rsid']} ({mt['allele']})", "child": None, "nonref": None}
+        # haploid mitochondrial call: the child carries the alternate only above the heteroplasmy threshold
+        child_base = mt["alt"] if obs["detected"] else mt["ref"]
+        g = (row.get("genotype") or "").strip()
+        return {"status": "matched" if g == child_base else "not_matched",
+                "key": f"{mt['rsid']} ({mt['allele']})",
+                "child": f"{child_base} ({mt['allele']} {obs['state']}, AF {obs['af']:.4f}, depth {obs['depth']}x)",
+                "nonref": obs["detected"], "caller": "MT_RNR1_CALL (CRAM)"}
     gid = row.get("genotypeId") or ""
     m = re.match(r"^([0-9XYM]+)_(\d+)_([^_]+)_(.+)$", gid)
     if not m:
@@ -194,6 +238,7 @@ def guideline(drug_names, gene):
 # ---------------------------------------------------------------- reverse: drug -> child
 meta = json.load(open(a.meta))
 verdict_rows, level_counts, cov = [], [], Counter()
+below_asserted = {}
 flips = Counter()
 
 # axis, tier and anti-target verdict per candidate, keyed by ChEMBL ID (empty for a plain ID list)
@@ -203,7 +248,8 @@ CAND = cand_spec.get("candidates") or {}
 
 def axis_tier(chembl):
     c = CAND.get(chembl) or {}
-    return {"axis": c.get("axis"), "tier": c.get("tier"), "patient_support": c.get("patient_support")}
+    return {"axis": c.get("axis"), "role": c.get("role"), "tier": c.get("tier"),
+            "patient_support": c.get("patient_support")}
 for path in a.drugs:
     d = json.load(open(path))
     qid = d["query_id"]
@@ -211,9 +257,16 @@ for path in a.drugs:
     names = sorted({n for n in [d.get("query_name")] + [r["_source_name"] for r in rows] if n})
     resolved = "; ".join(f"{x['id']} ({x['relation']})" for x in d.get("resolution") or []) or "none"
     lv = Counter(r.get("evidenceLevel") for r in rows)
-    level_counts.append({"drug": qid, "resolved_to": resolved, "rows_total": len(rows),
+    # rows below the asserted levels are counted, never joined; the genes behind level-2 rows are named
+    # so a reader can see what a lower assertion threshold (params.ot_assert_levels) would bring in
+    below = {str(k): v for k, v in lv.items() if k not in ASSERT}
+    genes_2 = sorted({gene_of(r)[0] for r in rows if str(r.get("evidenceLevel")) in ("2A", "2B")})
+    level_counts.append({"drug": qid, "drug_name": d.get("query_name"), "resolved_to": resolved, "rows_total": len(rows),
                          **{f"level_{k}": v for k, v in sorted(lv.items(), key=lambda x: str(x[0]))},
-                         "direct_target_rows": sum(1 for r in rows if r.get("isDirectTarget"))})
+                         "direct_target_rows": sum(1 for r in rows if r.get("isDirectTarget")),
+                         "rows_below_asserted": sum(below.values()),
+                         "genes_level_2": "; ".join(genes_2)})
+    below_asserted[qid] = {"by_level": dict(sorted(below.items())), "genes_level_2": genes_2}
     cov["drugs_total"] += 1
     if rows:
         cov["drugs_with_any_pgx"] += 1
@@ -277,19 +330,21 @@ for path in a.drugs:
                 "ot_phenotype_text": (r.get("phenotypeText") if r else None)})
 
 # candidates the pipeline deliberately did not query: the anti-target exclusions are the evidence
-# that the filter works, and an unresolved name is a gap in the list, so both are reported as rows
+# that the filter works, and an unresolved name is a gap in the list, so both are reported as rows.
+# A regimen candidate the rules matched was queried anyway (the rules do not apply to treatment
+# already given), so it has real rows above and no placeholder here
 for chembl, c in sorted(CAND.items(), key=lambda kv: (str(kv[1].get("axis")), kv[1].get("name") or "")):
-    if c.get("anti_target") != "excluded":
+    if c.get("anti_target") != "excluded" or c.get("role") == "regimen":
         continue
     verdict_rows.append({"drug": chembl, "drug_name": c.get("matched_name") or c.get("name"),
-                         "axis": c.get("axis"), "tier": c.get("tier"),
+                         "axis": c.get("axis"), "role": c.get("role"), "tier": c.get("tier"),
                          "patient_support": c.get("patient_support"), "resolved_to": f"{chembl} (as_given)",
                          "gene": None, "called": None, "caller": None, "matched_ot_allele": None,
                          "evidence_level": None, "pgx_category": None,
                          "flag": "excluded (anti-target)", "flag_basis": c.get("anti_target_reason"),
                          "guideline_text": None, "ot_phenotype_text": None})
 for u in cand_spec.get("unresolved") or []:
-    verdict_rows.append({"drug": None, "drug_name": u.get("name"), "axis": None, "tier": None,
+    verdict_rows.append({"drug": None, "drug_name": u.get("name"), "axis": None, "role": None, "tier": None,
                          "patient_support": None,
                          "resolved_to": "none", "gene": None, "called": None, "caller": None,
                          "matched_ot_allele": None, "evidence_level": None, "pgx_category": None,
@@ -339,7 +394,8 @@ summary = {
     "drug_list": {"label": a.drug_list_label, "example": a.drug_list_example,
                   "chembl_ids_queried": sorted({json.load(open(f)).get("query_id") for f in a.drugs}),
                   **{k: v for k, v in cand_spec.items() if k in ("axes", "counts", "unresolved", "excluded",
-                                                                 "anti_target_rules", "candidates")}},
+                                                                 "regimen_anti_target", "anti_target_rules",
+                                                                 "candidates")}},
     "open_targets": meta,
     "asserted_levels": sorted(ASSERT),
     "include_direct_targets": a.include_direct_targets,
@@ -350,6 +406,9 @@ summary = {
                                             key=str)},
     "strand_flipped_rows": dict(flips),
     "level3_rows_exploratory_total": sum(r.get("level_3", 0) for r in level_counts),
+    # every row at a level outside ASSERT (2A, 2B, 3, 4, ...): counted, carried no further
+    "rows_below_asserted_total": sum(r.get("rows_below_asserted", 0) for r in level_counts),
+    "below_asserted_by_drug": below_asserted,
 }
 json.dump(summary, open(a.prefix + ".summary.json", "w"), indent=2)
 print(json.dumps(summary["join_coverage"]))

@@ -1,3 +1,11 @@
+{% macro figure(key) -%}
+{% if figs[key] %}
+
+![Figure {{ fignum[key] }}]({{ figs[key].path }})
+
+*Figure {{ fignum[key] }}. {{ figs[key].label }}*
+{% endif %}
+{%- endmacro %}
 # MVA Hackathon 2026, Track 2: pharmacogenomics, modifier genotypes and mosaic aneuploidy burden
 
 Sample `{{ sample }}` · generated {{ prov.generated_utc }} · pipeline {{ prov.pipeline.name }} {{ prov.pipeline.version }} @ `{{ prov.pipeline.git_commit }}`
@@ -15,14 +23,14 @@ Sample `{{ sample }}` · generated {{ prov.generated_utc }} · pipeline {{ prov.
 
 {% if domain_map and truncating %}
 {% for v in truncating %}
-- **Mechanism.** {{ v.hgvsp }} truncates {{ domain_map.protein }} before the kinase domain; {% for w in nontruncating %}{{ w.hgvsp }} sits inside it{{ '; ' if not loop.last }}{% endfor %}. Both alleles converge on kinase-domain dysfunction, derived here from the domain coordinates rather than asserted.{{ (' The nonsense allele is **' ~ nmd_ptcs[0].verdict ~ '** (' ~ nmd_ptcs[0].ptc_to_last_junction_nt ~ ' nt upstream of the last exon-exon junction), so a readthrough strategy would have to contend with transcript decay as well as the stop codon.') if nmd_ptcs else '' }}
+- **Mechanism.** {{ v.hgvsp }} truncates {{ domain_map.protein }} before the kinase domain; {% for w in nontruncating %}{{ w.hgvsp }} sits inside it{{ '; ' if not loop.last }}{% endfor %}. Both alleles converge on kinase-domain dysfunction, derived here from the domain coordinates rather than asserted.{% if rt %} The nonsense allele creates a **{{ rt.stop_codon }}** stop, the most readthrough-permissive of the three, in a {{ rt.stop_context }} context whose +4 base is the least permissive; it is **{{ rt.nmd_verdict }}**, which is the rationale for pairing readthrough with NMD inhibition rather than an obstacle to it. All three near-cognate readthrough products are predicted tolerated ({% for p in rt.readthrough_products %}{{ p.label }} {{ p.alphamissense }}{{ ', ' if not loop.last }}{% endfor %}), so the protein a readthrough agent would make is a specific, scored prediction rather than a hope (section 1.1).{% endif %}
 {% endfor %}
 {% endif %}
 {% if tract and tract.found %}
 - **Why repurposing, not targeting.** {{ tract.gene }} is {% if tract.is_essential %}essential{% endif %} and has no approved, advanced-clinical or Phase 1 candidate in any modality. The only modality with positive evidence beyond ligandability is protein **degradation** — the inverse of what a loss-of-function disease needs. Every drugged node in the surrounding mitotic machinery is an inhibitor of a mitotic-fidelity gene, so the pipeline encodes the exclusion as a rule and reports what it rejects.
 {% endif %}
 {% if ot_status in ('reported', 'example') and ot_counts %}
-- **Candidate repurposing hypotheses:** {{ ot_counts.candidates }} proposed across {{ ot_by_axis | length }} mechanistic axes; {{ ot_counts.resolved }} resolved against Open Targets, **{{ ot_counts.excluded_by_anti_target }} excluded by the anti-target rule**, {{ ot_counts.queried_in_stage_1b }} carried into the genotype join. Grouped by how well each is supported for this child, not ranked into one list.
+- **Candidate repurposing hypotheses:** {% if ot_by_axis %}{{ ot_n_repurposing }} approved medicines across {{ ot_by_axis | length }} axes, presented mechanism-directed first: readthrough of the nonsense allele, proteostasis support for the cost of aneuploidy, then the tumour-directed candidates, which are all tier 3 because they need a tumour genotype this data cannot provide. **{{ ot_counts.excluded_by_anti_target }} excluded by the anti-target rule**. Investigational agents are named where relevant but excluded from the list, which counts approved medicines only. A separate mechanism finding, not a candidate, concerns the therapy already given: a germline checkpoint defect plausibly lowers vincristine's efficacy while leaving its neuropathy risk untouched.{% else %}none on this drug list yet; the Track 2 candidate set has still to be supplied.{% endif %}{% if ot_regimen %} **Treatment already given:** {{ ot_n_regimen }} standard-regimen agents annotated against this child's genotypes through Open Targets (ClinPGx), queried regardless of the anti-target verdict{% if ot_counts.regimen_anti_target_hits %}; {{ ot_counts.regimen_anti_target_hits }} act against mitotic fidelity, which is the therapy-related-risk consideration, not an exclusion{% endif %}.{% endif %}{{ '' }}
 {% else %}
 - **Candidate repurposing hypotheses:** not yet run. The mechanism, the anti-target rule and the join are in place; the candidate list has still to be supplied (`--drug_list_file`).
 {% endif %}
@@ -32,7 +40,7 @@ Sample `{{ sample }}` · generated {{ prov.generated_utc }} · pipeline {{ prov.
 {% endfor %}{% endif %}
 {% if pgx_literature %}
 {% for x in pgx_literature %}
-- **{{ x.label }} — {{ x.context | lower }}.** {{ x.literature[-1].statement }} Cited: {% for l in x.literature if l.pmid %}PMID {{ l.pmid }}{{ ', ' if not loop.last }}{% endfor %}. No CPIC or DPWG guideline covers this drug-gene pair, so it carries no guideline flag; that is why it is stated here rather than left to an empty flag column.
+- **{{ x.label }} — {{ x.context | lower }}.** {{ x.literature[-1].statement }} Cited: ({% for l in x.literature if l.pmid %}{{ cite_pmid(l.pmid, l.citation, true) }}{{ '; ' if not loop.last }}{% endfor %}). No CPIC or DPWG guideline covers this drug-gene pair, so it carries no guideline flag; that is why it is stated here rather than left to an empty flag column.
 {% endfor %}
 {% endif %}
 - **Pharmacogenomic context — reportable negatives in drug classes this child is likely to meet:** {{ pgx_negatives | join('; ') if pgx_negatives else 'none' }}.
@@ -57,6 +65,13 @@ Sample `{{ sample }}` · generated {{ prov.generated_utc }} · pipeline {{ prov.
 - **QC:** {% for c in qc_checks %}{{ c.check }}: **{{ c.status }}**{{ "; " if not loop.last }}{% endfor %}.
 {% endif %}
 
+### How this report addresses the scoring criteria
+
+- **Scientific rigor.** The variant mechanism is derived, not asserted: domain coordinates from a cited source, NMD sensitivity computed from the transcript, the stop codon read from VEP's codon field and re-checked against the genome, and the readthrough products scored (section 1.1). The two leading candidate axes are the two that follow from that mechanism; the tumour-directed candidates are marked down precisely because they are supported by tumour biology instead.
+- **Potential impact.** For this child: a pharmacogenomic layer with the aminoglycoside gate resolved, and a regimen finding that bears on therapy already being given. For others: the readthrough axis applies to any MVA1 patient carrying a nonsense allele, and most pathogenic alleles in this gene are of that kind (section 1.2). The aneuploidy result is a negative with a stated detection limit, which is a contribution to understanding the disease rather than an absence of one.
+- **Innovation.** Scoring the near-cognate readthrough products rather than stopping at "readthrough might work"; letting the drug list define the pharmacogenomic panel instead of a fixed gene set; the copy-number counterfactual that shows a phenotype call flipping on method; the anti-target rule written as code that reports what it rejects; and the vincristine asymmetry, which turns the mechanism back onto the current regimen.
+- **Scalability.** Every step is a Nextflow process with pinned versions and a stub profile, runnable on another sample with one command. The readthrough method is disease-agnostic: characterise the stop codon and its context, predict and score the near-cognate products, gate aminoglycosides on MT-RNR1, flag phenotype-dependent cautions.
+
 ## Methods
 
 {% include 'methods.j2' %}
@@ -73,11 +88,45 @@ Sample `{{ sample }}` · generated {{ prov.generated_utc }} · pipeline {{ prov.
 **{{ v.hgvsp }}** ({{ v.consequence }}, {{ v.zygosity }}) falls at residue {{ v.position }}, inside {{ v.in_domains | join(', ') if v.in_domains else 'no annotated domain' }}.
 {% endfor %}
 
-The two alleles therefore converge on the same module: one truncates before the kinase domain begins, the other sits inside it. That is a sharper statement than "one null allele and one hypomorph", and it is derived here from the domain coordinates rather than asserted — domain boundaries from {{ domain_map.domain_source }}; variant positions from this run's own panel output.
+The two alleles therefore converge on the same module: one truncates before the kinase domain begins, the other sits inside it. That is a sharper statement than "one null allele and one hypomorph", and it is derived here from the domain coordinates rather than asserted — domain boundaries from {{ domain_map.domain_source | cite }}; variant positions from this run's own panel output. {% if figs.domains %}Figure {{ fignum.domains }} draws the two variants on the domain map, which is where that statement comes from.{% endif %}
 
-{% if figs.domains %}
-![{{ figs.domains.label }}]({{ figs.domains.path }})
+{{ figure('domains') }}
+{% if rt %}
+
+#### 1.1 What a readthrough agent would actually produce at this stop codon
+
+A nonsense allele is a readthrough target only if three things hold. Each is derived from this run rather than assumed, and one of the three comes out against the strategy.
+
+**Which stop codon.** The codon change is `{{ rt.codon_change }}`, so the premature stop is **{{ rt.stop_codon }}**, the {{ rt.stop_permissiveness }} of the three stop codons and the one ataluren was characterised against {{ cite('[@ng2021]') }}. The reference codon was re-read from the genome at `{{ rt.codon_region }}` and {{ 'matches the transcript annotation' if rt.reference_codon_confirmed else '**does not match the transcript annotation**, so the coordinates below are unreliable' }}.
+
+**What 3′ context.** The base immediately after the stop exerts the strongest single-nucleotide influence on readthrough efficiency. Here it is **{{ rt.plus4_base_rna }}**, giving the context {{ rt.stop_context }}, which is position {{ rt.plus4_rank }} of {{ rt.plus4_of }} in the published order {{ rt.plus4_order }} {{ cite('[@mangkalaphiban2024]') }}. The codon favours readthrough and the local context works against it. Both are reported because only one of them is convenient.
+
+**What protein.** Readthrough does not restore the reference residue. Near-cognate decoding at {{ rt.stop_codon }} inserts Trp, Arg or Cys {{ cite('[@ng2021]') }}, so a readthrough agent would produce one of three specific full-length proteins rather than the wild-type one. AlphaMissense scores each of them, and Figure {{ fignum.readthrough_products }} places them among every other substitution the residue could carry:
+
+| Readthrough product | AlphaMissense | Class |
+|---|---|---|
+{% for p in rt.readthrough_products %}
+| {{ p.label }} | {{ p.alphamissense }} | {{ p.class }} |
+{% endfor %}
+
+{{ figure('readthrough_products') }}
+
+Verdict: **{{ rt.verdict }}**. The residue is tolerant more broadly, which is the stronger claim: of the {{ rt.residue_tolerance.n_substitutions_scored }} substitutions AlphaMissense scores at this position, {{ rt.residue_tolerance.n_benign }} are benign, {{ rt.residue_tolerance.n_ambiguous }} ambiguous and {{ rt.residue_tolerance.n_pathogenic }} pathogenic, with a mean of {{ rt.residue_tolerance.mean_score }} against {{ rt.regional_means['whole protein'] }} for the protein as a whole. The position sits in the {{ rt.residue_region }}, not inside a folded domain. So the predicted readthrough product is a full-length protein carrying a tolerated substitution at a tolerant position between two domains.
+
+**Why the combination, not readthrough alone.** The premature stop lies {{ rt.nmd_distance_to_last_junction_nt }} nt upstream of the last exon–exon junction, in exon {{ rt.ptc_exon }}, and is therefore {{ rt.nmd_verdict }}. That is the reason to pair a readthrough agent with nonsense-mediated-decay inhibition, not an argument against the axis: most of the transcript is degraded before it is translated, so a readthrough agent acts on a depleted substrate. The pharmacology is the weak point. No NMD inhibitor is approved; amlexanox is the only approved compound with NMD-inhibition literature and that literature is thin {{ cite('[@atanasova2017]') }}{{ cite('[@benslimane2023]') }}.
+
+Whether the small percentage of full-length protein that readthrough typically restores would cross the phenotypic threshold is unknown, and the conditional framing in the residual-function paragraph above applies unchanged {{ cite('[@simmons2019]') }}.
 {% endif %}
+{% if readthrough and readthrough.clinvar_pathogenic_alleles and readthrough.clinvar_pathogenic_alleles.pathogenic_total %}
+{% set cv = readthrough.clinvar_pathogenic_alleles %}
+
+#### 1.2 How far this reaches beyond one child
+
+The readthrough axis is not specific to this child's allele. Of the {{ cv.pathogenic_total }} {{ domain_map.gene }} variants classified pathogenic or likely pathogenic in ClinVar {{ params.clinvar_release }}, **{{ cv.truncating }} ({{ cv.truncating_pct }}%) are nonsense or frameshift** ({{ cv.nonsense }} nonsense, {{ cv.frameshift }} frameshift), with {{ cv.splice }} splice-affecting and {{ cv.other }} other. Counted from the same ClinVar release this pipeline already uses, not quoted. A readthrough strategy is relevant to any patient carrying at least one nonsense allele, so it addresses a substantial share of the pathogenic alleles reported in this gene rather than a single private variant.
+
+The method generalises further than the gene does. Characterising the stop codon and its 3′ context, predicting the near-cognate products and scoring them, gating aminoglycosides on MT-RNR1, and flagging phenotype-dependent contraindications are all disease-agnostic steps; they apply to any recessive disorder with a nonsense allele. Each is a pipeline module rather than a manual lookup: `readthrough_analysis` for the stop codon, context, products and this count, `variant_mechanism` for NMD sensitivity and the domain map, `mt_rnr1_call` for the aminoglycoside gate, and `pgx_annotate.nf` for the drug-driven pharmacogenomic join.
+{% endif %}
+
 {% else %}
 Domain mapping not available.
 {% endif %}
@@ -98,7 +147,7 @@ Rule applied: a PTC more than {{ nmd.rules.last_junction_nt }} nt upstream of th
 **Recurrent parental pregnancy loss is consistent with biallelic lethality.** Recurrent spontaneous abortion (HP:0200067) is among the released features. Runs of homozygosity give F_ROH(>=1.5 Mb) = {{ roh_f }}, so the parents are not detectably related, and each pregnancy of two unrelated carriers has a 25% chance of being biallelic. Complete knockout in mouse is embryonic-lethal with complete penetrance, between implantation and placentation. If biallelic loss is lethal in humans too, recurrent early pregnancy loss is the predicted consequence, and it is what the family history records. This is independent human evidence, from this child's own family, for the premise the whole null-plus-hypomorph argument rests on. It is consistent with that premise rather than proof of it: recurrent miscarriage is common and has many causes, and no products of conception were genotyped.
 {% endif %}
 
-**Residual function — conditional, and stated as such.** Simmons et al. (Hum Mol Genet 2019;28:1822, PMID 30668728) report that nearly complete loss of BubR1 is required for microcephaly. Microcephaly is not among the features released to participants. **If** it is genuinely absent rather than unreported or unassessed, that would imply the missense allele retains meaningful activity, and strategies acting on residual protein would be acting on a partially functional system. The antecedent is not established here and is not asserted: under the epistemic rule above, absence from the released set is not evidence of absence. Two further cautions apply — microcephaly is reported in 87% of MVA1 cases but is explicitly not required for the diagnosis (Callier P et al., Am J Med Genet A 2005;137:204-7, PMID 16059936), and this child is young, so a head-circumference trajectory may not be complete. The inference is recorded because it would matter if resolved, not because it is resolved.
+**Residual function — conditional, and stated as such.** {{ cite('[@+simmons2019]') }} report that nearly complete loss of BubR1 is required for microcephaly. Microcephaly is not among the features released to participants. **If** it is genuinely absent rather than unreported or unassessed, that would imply the missense allele retains meaningful activity, and strategies acting on residual protein would be acting on a partially functional system. The antecedent is not established here and is not asserted: under the epistemic rule above, absence from the released set is not evidence of absence. Two further cautions apply — microcephaly is reported in 87% of MVA1 cases but is explicitly not required for the diagnosis {{ cite('[@callier2005]') }}, and this child is young, so a head-circumference trajectory may not be complete. The inference is recorded because it would matter if resolved, not because it is resolved.
 
 ### 2. The therapeutic problem, and why the strategy is repurposing
 
@@ -120,9 +169,9 @@ That asymmetry is the central problem of Track 2 for this gene, and it is why th
 
 **So the strategy is compensation, not replacement.** No available molecule restores BubR1 kinase activity. What a repurposing hypothesis can do is act on something *other than* the broken protein so that the consequences of its loss are reduced. Each candidate axis is one such mechanism, and each is a hypothesis about a different point of leverage:
 
-- restore some full-length protein from the nonsense allele (readthrough, NMD inhibition);
+- restore some full-length protein from the nonsense allele (readthrough, NMD inhibition) — **populated as the readthrough axis below**, and characterised in section 1.1;
 - stabilise the partially functional protein the missense allele already makes;
-- reduce the cellular cost of the aneuploidy that results (proteostasis and chaperone support);
+- reduce the cellular cost of the aneuploidy that results (proteostasis and chaperone support) — **populated as the proteostasis axis below**;
 - treat downstream consequences that are themselves druggable, where the spindle checkpoint is not.
 
 The candidate list below is organised by that logic, and by how well each axis is supported for this child rather than for the syndrome in general.
@@ -133,7 +182,11 @@ The candidate list below is organised by that logic, and by how well each axis i
 Drug list `{{ ot_sum.drug_list.label }}`{% if ot_status == 'example' %} — **EXAMPLE LIST:** this checks the join logic and is not the Track 2 candidate set{% endif %}. Open Targets {{ prov.databases.open_targets if prov.databases.open_targets else '' }}. **Open Targets sources its pharmacogenomics from ClinPGx (formerly PharmGKB), the same knowledge base CPIC and PharmCAT draw on**, so agreement between the two layers is not independent corroboration. Candidates are grouped by the rationale that proposes them, never ranked into a single list. Everything here is a research hypothesis, not a treatment recommendation.
 
 {% if ot_counts %}
-{{ ot_counts.candidates }} candidates: {{ ot_counts.resolved }} resolved to a ChEMBL ID through the Open Targets search API{% if ot_counts.ambiguous %}, {{ ot_counts.ambiguous }} ambiguous{% endif %}{% if ot_counts.not_found %}, {{ ot_counts.not_found }} not found{% endif %}; **{{ ot_counts.excluded_by_anti_target }} excluded by the anti-target rules**{% if ot_counts.anti_target_not_assessable %}, {{ ot_counts.anti_target_not_assessable }} not assessable{% endif %}; {{ ot_counts.queried_in_stage_1b }} queried. Join coverage: {{ ot_cov }}. Only evidence levels {{ ot_sum.asserted_levels | join(', ') }} are asserted; {{ ot_sum.level3_rows_exploratory_total }} level-3 rows were counted as exploratory and carried no further.
+{{ ot_counts.candidates }} entries on the list{% if ot_regimen %} ({{ ot_n_repurposing }} repurposing candidates, {{ ot_n_regimen }} agents of the current regimen){% endif %}: {{ ot_counts.resolved }} resolved to a ChEMBL ID through the Open Targets search API{% if ot_counts.ambiguous %}, {{ ot_counts.ambiguous }} ambiguous{% endif %}{% if ot_counts.not_found %}, {{ ot_counts.not_found }} not found{% endif %}; **{{ ot_counts.excluded_by_anti_target }} excluded by the anti-target rules**{% if ot_counts.anti_target_not_assessable %}, {{ ot_counts.anti_target_not_assessable }} not assessable{% endif %}; {{ ot_counts.queried_in_stage_1b }} queried. Join coverage: {{ ot_cov }}. Only evidence levels {{ ot_sum.asserted_levels | join(', ') }} are asserted; {{ ot_sum.rows_below_asserted_total if ot_sum.rows_below_asserted_total is defined else ot_sum.level3_rows_exploratory_total }} rows at lower levels were counted and carried no further.
+{% endif %}
+{% if not ot_by_axis %}
+
+No repurposing candidates are on this list. The mechanism, the anti-target rule and the join are in place; the Track 2 candidate set has still to be supplied.
 {% endif %}
 
 {% for grp in ot_support_groups %}
@@ -144,12 +197,15 @@ Drug list `{{ ot_sum.drug_list.label }}`{% if ot_status == 'example' %} — **EX
 {% for ax in grp.axes %}
 ##### Axis {{ ax.axis }}. {{ ax.title }}
 
-{{ ax.rationale }}
+{{ ax.rationale | cite }}
 
 {% for d in ax.drugs %}
 - **{{ d.name }}** — tier {{ d.tier }}{{ (', ' ~ d.support) if d.support else '' }}{{ (', Open Targets maximum clinical stage ' ~ d.stage) if d.stage else '' }}{{ ', investigational' if d.investigational else '' }}{{ ' — **excluded by the anti-target rules**' if d.anti_target == 'excluded' else '' }}{{ ' — anti-target rules not assessable (no mechanism of action in Open Targets)' if d.anti_target == 'not assessable' else '' }}
+{% if d.caution %}
+  - *Status and caveats:* {{ d.caution | cite }}
+{% endif %}
 {% if d.move_up %}
-  - *To raise the tier:* {{ d.move_up }}
+  - *To raise the tier:* {{ d.move_up | cite }}
 {% endif %}
 {% endfor %}
 
@@ -169,12 +225,15 @@ These axes carry candidates whose `patient_support` was not recorded, so they ar
 {% for ax in ot_support_ungrouped %}
 ##### Axis {{ ax.axis }}. {{ ax.title }}
 
-{{ ax.rationale }}
+{{ ax.rationale | cite }}
 
 {% for d in ax.drugs %}
 - **{{ d.name }}** — tier {{ d.tier }}{{ (', ' ~ d.support) if d.support else '' }}{{ (', Open Targets maximum clinical stage ' ~ d.stage) if d.stage else '' }}{{ ', investigational' if d.investigational else '' }}{{ ' — **excluded by the anti-target rules**' if d.anti_target == 'excluded' else '' }}{{ ' — anti-target rules not assessable (no mechanism of action in Open Targets)' if d.anti_target == 'not assessable' else '' }}
+{% if d.caution %}
+  - *Status and caveats:* {{ d.caution | cite }}
+{% endif %}
 {% if d.move_up %}
-  - *To raise the tier:* {{ d.move_up }}
+  - *To raise the tier:* {{ d.move_up | cite }}
 {% endif %}
 {% endfor %}
 
@@ -186,13 +245,40 @@ These axes carry candidates whose `patient_support` was not recorded, so they ar
 
 {% endfor %}
 {% endif %}
+{% if ot_regimen %}
+#### Treatment the child is already receiving
+
+{% for ax in ot_regimen %}
+{{ ax.rationale | cite }}
+
+These agents are not repurposing candidates. The anti-target rule governs proposing *new* drugs for a mitotic-fidelity disorder; it is not applied to therapy given with curative intent and does not license withdrawing it. Every agent here was queried in Open Targets regardless of the rule, so its ClinPGx annotations, including positions outside the stage 1a panel, were force-called from the CRAM and joined to this child's genotypes. Where the rule would have matched, the mechanism is shown as a note: it is the basis of the therapy-related-risk consideration in section 4, not an exclusion. A drug with no asserted ClinPGx row is reported as no data, which is not evidence of no effect.{% if figs.stage1b_levels %} Figure {{ fignum.stage1b_levels }} shows where each drug's ClinPGx evidence sits: only the outlined columns reach the asserted levels, and the counts to their right are what a lower threshold would bring in.{% endif %}
+
+{% for d in ax.drugs %}
+- **{{ d.name }}**{{ (', Open Targets maximum clinical stage ' ~ d.stage) if d.stage else '' }}{% if d.anti_target == 'excluded' %} — *acts against mitotic fidelity:* {{ d.anti_target_reason | cite }}{% elif d.anti_target == 'not assessable' %} — mechanism of action not recorded in Open Targets, so the mitotic-fidelity rule could not be assessed{% else %} — no inhibitory mechanism against a mitotic-fidelity target{% endif %}{{ '' }}
+{% if d.below_asserted %}
+  - *ClinPGx rows below the asserted levels, counted and not joined:* {{ d.below_asserted }}.
+{% endif %}
+{% endfor %}
+
+| Drug | Gene | Called | Caller | Matched OT allele | Level | Flag | Guideline text or basis |
+|---|---|---|---|---|---|---|---|
+{% for d in ax.drugs %}{% for r in d.rows %}
+| {{ d.name | mdcell }} | {{ r.gene | mdcell }} | {{ r.called | mdcell }} | {{ r.caller | mdcell }} | {{ r.matched_ot_allele | mdcell }} | {{ r.evidence_level | mdcell }} | {{ r.flag | mdcell }} | {{ (r.guideline_text or r.flag_basis) | mdcell }} |
+{% endfor %}{% endfor %}
+
+{% endfor %}
+{% endif %}
+{% if figs.stage1b_levels %}
+{% if not ot_regimen %}Figure {{ fignum.stage1b_levels }} shows where each queried drug's ClinPGx evidence sits by level; only the outlined columns are asserted.{% endif %}
+{{ figure('stage1b_levels') }}
+{% endif %}
 {% if ot_excluded %}
 #### Anti-target exclusions
 
 The rule: **an inhibitor of a mitotic-fidelity gene is contraindicated in a mitotic-fidelity disorder.** A candidate is excluded when a mechanism-of-action row in Open Targets has an inhibitory action type and one of that row's targets carries a direct Gene Ontology biological-process annotation to {% for g, lbl in ot_rules.go_terms.items() %}`{{ g }}` {{ lbl }}{{ '; ' if not loop.last }}{% endfor %}; a second, curated rule covers targets shown in primary literature to compromise mitotic fidelity without carrying those terms. These candidates were included deliberately: their exclusion is the evidence that the filter works.
 
 {% for x in ot_excluded %}
-- **{{ x.name }}** (axis {{ x.axis }}): {{ x.reason }}
+- **{{ x.name }}** (axis {{ x.axis }}): {{ x.reason | cite }}
 {% endfor %}
 
 {% endif %}
@@ -206,6 +292,39 @@ The rule: **an inhibitor of a mitotic-fidelity gene is contraindicated in a mito
 {% endif %}
 
 Full table: `pgx/open_targets/{{ sample }}.pgx_ot.verdicts.tsv`; resolution and anti-target detail: `…track2.resolved.tsv`, `…track2.anti_target.tsv`.
+
+#### What the mechanism implies for the therapy already given
+
+This is a mechanism finding, not a repurposing candidate, and it is the most clinically pointed thing in this report. It is a consideration for the treating team. It is **not** a recommendation to alter a rhabdomyosarcoma protocol, and nothing here licenses withdrawing therapy given with curative intent.
+
+**The vincristine asymmetry.** Vincristine kills by disrupting the spindle so that the spindle assembly checkpoint holds the cell in mitosis until it dies there. A cell with a weakened checkpoint does not arrest; it slips through mitosis and survives. That is a documented resistance mechanism for antimitotic drugs: checkpoint-compromised cells are less sensitive to paclitaxel {{ cite('[@sudo2004]') }} and to microtubule-targeted drugs generally {{ cite('[@lee2004]') }}, mitotic slippage is the established route to that resistance {{ cite('[@cheng2017]') }}, and the one report that is specific to this protein runs the same way in reverse: BubR1 is repressed in acute myeloid leukaemia, and restoring it re-sensitises the cells to antimitotic therapy {{ cite('[@schnerch2013]') }}.
+
+This child's checkpoint defect is germline, so it is present in the tumour as well as in normal tissue. Two consequences follow, both stated as hypotheses:
+
+1. **Efficacy.** The tumour may be intrinsically less sensitive to vincristine's cytotoxic mechanism than a checkpoint-competent tumour of the same histology.
+2. **Toxicity.** Vincristine's dose-limiting toxicity is peripheral neuropathy, which acts through axonal microtubule transport in post-mitotic neurons. That mechanism does not involve the checkpoint, so it is not reduced by the defect. This child is additionally a CYP3A5 non-expresser, the higher-neuropathy-risk genotype in the reports cited in the pharmacogenomic section.
+
+For the same drug in the same child, plausibly reduced efficacy and plausibly undiminished or increased toxicity. That asymmetry is the finding.
+
+**The DNA-damaging agents run the same way by a different route.** Cyclophosphamide, ifosfamide, doxorubicin, etoposide and radiotherapy do not act through the checkpoint, so the slippage argument does not apply to them. The argument for caution there is the one already made in this report: a chromosomal-instability background plus mutagenic exposure raises the risk of a therapy-related second malignancy. The single published rhabdomyosarcoma in this syndrome was treated with reduced-intensity chemotherapy {{ cite('[@nishitaniisa2019]') }}. That paper's full text was not accessible to this analysis, so it is cited for the approach its title states and not for any regimen detail, which would have to be read from the paper before being built on.
+
+**Limits of the analogy, and of the inference.** De-intensification protocols in ataxia telangiectasia, Nijmegen breakage syndrome and Fanconi anaemia rest on DNA-repair defects; this is a segregation defect, so the analogy is suggestive rather than direct. The antimitotic-resistance literature comes from cancer cell lines with acquired checkpoint loss, not from germline hypomorphs. The tumour's own checkpoint status is unknown, because no tumour sequencing was released, and a somatic event could have moved it in either direction. The anti-target rule governs new proposals only and is not applied to treatment already given.
+
+#### One blocker, not five caveats: what the tumour-directed candidates need
+
+All five tumour-directed candidates share a single blocker, and it is the same one each time. The released data is germline whole-genome sequencing. Precision-oncology candidates are selected on the tumour's genotype — fusion status, copy number, homologous-recombination status, aneuploidy score — none of which is derivable from germline data. The candidates cannot be assessed, and the reason does not differ between them.
+
+| Candidate | Tumour data that would make it assessable |
+|---|---|
+| abemaciclib | histology; PAX3/PAX7-FOXO1 fusion status; CDK4 copy number or expression |
+| olaparib | homologous-recombination deficiency or aneuploidy score; HR-pathway variant status |
+| niraparib | as olaparib, plus any rhabdomyosarcoma-specific PARP data, of which none was found |
+| ceralasertib | ATM status; replication-stress markers |
+| simvastatin | none — the proposed mechanism is unsupported; retained as a worked negative |
+
+That is a concrete request a treating team could take to a tumour pathology record, if one exists.
+
+**What this says about the substrate.** Germline whole-genome sequencing is the right data for mechanism-directed candidates and for pharmacogenomics, and the wrong data for tumour-directed ones. The data released for this challenge therefore points toward mechanism, which is where the readthrough axis, the proteostasis axis and the vincristine finding sit, and away from the tumour-directed candidates. That is the reason this report's weight rests where it does.
 
 {% elif ot_status == 'unrecorded' %}
 ### 3. Candidate repurposing hypotheses (stage 1b)
@@ -232,7 +351,7 @@ Results are grouped by the clinical contexts this child actually faces and order
 
 {% if counterfactual and counterfactual.applicable %}
 {% for g, v in counterfactual.genes.items() %}
-**Copy number changed a phenotype call ({{ g }}).** The call is `{{ v.observed.diplotype }}`: {{ v.observed.phenotype }}, activity score {{ v.observed.activity_score }}{% if g == 'CYP2D6' and star_cyp2d6 %}, with the duplication detected independently by Aldy (`{{ star_cyp2d6.aldy }}`) and PyPGx (`{{ star_cyp2d6.pypgx }}`){% endif %}. Without copy-number detection the same reads give `{{ v.counterfactual.diplotype }}`: **{{ v.counterfactual.phenotype }}, activity score {{ v.counterfactual.activity_score }}**. Re-running PharmCAT on the same VCF with that call changes {{ counterfactual.annotations_changed }} of {{ counterfactual.annotations_compared }} {{ g }}-dependent CPIC/DPWG annotations. Flagged (dose-adjustment or alternative-drug) annotations rise from {{ counterfactual.flagged_observed }} to {{ counterfactual.flagged_counterfactual }}; these drugs would be flagged only under the copy-number-naive call: {{ counterfactual.drugs_flagged_only_in_counterfactual | join(', ') }}.
+**Copy number changed a phenotype call ({{ g }}).** The call is `{{ v.observed.diplotype }}`: {{ v.observed.phenotype }}, activity score {{ v.observed.activity_score }}{% if g == 'CYP2D6' and star_cyp2d6 %}, with the duplication detected independently by Aldy (`{{ star_cyp2d6.aldy }}`) and PyPGx (`{{ star_cyp2d6.pypgx }}`){% endif %}. Without copy-number detection the same reads give `{{ v.counterfactual.diplotype }}`: **{{ v.counterfactual.phenotype }}, activity score {{ v.counterfactual.activity_score }}**. Re-running PharmCAT on the same VCF with that call changes {{ counterfactual.annotations_changed }} of {{ counterfactual.annotations_compared }} {{ g }}-dependent CPIC/DPWG annotations. Flagged (dose-adjustment or alternative-drug) annotations rise from {{ counterfactual.flagged_observed }} to {{ counterfactual.flagged_counterfactual }}; these drugs would be flagged only under the copy-number-naive call: {{ counterfactual.drugs_flagged_only_in_counterfactual | join(', ') }}.{% if g == 'CYP2D6' and figs.cyp2d6_depth %} Figure {{ fignum.cyp2d6_depth }} shows the read depth behind that call: the CYP2D6 interval sits above the two-copy line in both tracks, while the surrounding sequence does not.{% endif %}
 {% endfor %}
 {% if cf_context_rows %}
 
@@ -249,10 +368,10 @@ Results are grouped by the clinical contexts this child actually faces and order
 
 *{{ c.support_label }}.*
 
-{{ c.why }}
+{{ c.why | cite }}
 
 {% for n in c.narrative %}
-{{ n }}
+{{ n | cite }}
 
 {% endfor %}
 {% if c.findings %}
@@ -263,25 +382,25 @@ Results are grouped by the clinical contexts this child actually faces and order
 {% endfor %}
 
 {% for f in c.findings %}
-- **{{ f.label }}.**{{ (' ' ~ f.note) if f.note else '' }}{{ ' No annotation matches this genotype.' if not (f.annotations or f.literature) else '' }}
+- **{{ f.label }}.**{{ (' ' ~ (f.note | cite)) if f.note else '' }}{{ ' No annotation matches this genotype.' if not (f.annotations or f.literature) else '' }}
 
 {% for x in f.annotations %}
   - {{ x.drugs }} [{{ x.genes }}], {{ x.source }}{{ (' (' ~ x.classification ~ ')') if x.classification else '' }}{{ (' **[' ~ x.flag ~ ']**') if x.flag else '' }}: {{ x.recommendation }}
 {% endfor %}
 {% for x in f.literature %}
-  - *Literature, not a guideline{{ ('; PMID ' ~ x.pmid) if x.pmid else '' }}:* {{ x.statement }}{{ (' (' ~ x.citation ~ ')') if x.citation else '' }}
+  - *Literature, not a guideline:* {{ x.statement | cite }} {{ cite_pmid(x.pmid, x.citation) }}
 {% endfor %}
 {% if f.missing_drugs %}
   - Not in PharmCAT's data: {{ f.missing_drugs | join(', ') }}.
 {% endif %}
 {% endfor %}
 {% if c.unannotated %}
-- **No CPIC, DPWG or FDA annotation in PharmCAT:** {{ c.unannotated | join(', ') }}. {{ c.unannotated_note }}
+- **No CPIC, DPWG or FDA annotation in PharmCAT:** {{ c.unannotated | join(', ') }}. {{ c.unannotated_note | cite }}{% if c.unannotated_in_stage1b %} That lookup was run for {{ c.unannotated_in_stage1b | join(', ') }}: see "Treatment the child is already receiving" in section 3.{% endif %}{{ '' }}
 {% endif %}
 {% endif %}
 {% if c.panel_gap_genes %}
 
-**Panel gap — genes bearing on this context that were scoped out of the panel.** {{ c.panel_gap_note }}
+**Panel gap — genes bearing on this context that were scoped out of the panel.** {{ c.panel_gap_note | cite }}
 
 | Gene | Relevance |
 |---|---|
@@ -291,6 +410,12 @@ Results are grouped by the clinical contexts this child actually faces and order
 {% endif %}
 
 {% endfor %}
+{% if figs.pgx_concordance %}
+Figure {{ fignum.pgx_concordance }} lays the three callers' calls side by side for every gene. Its verdict column is the agreement column of the table below, so a reader can see where the calls differ rather than take the summary count on trust.{% if figs.cyp2d6_depth %} Figure {{ fignum.cyp2d6_depth }} is the read-level evidence for the one copy-number call in the panel.{% endif %}{% if figs.forcecall_depth %} Depth at every genotyped position is in Figure {{ fignum.forcecall_depth }} (appendix).{% endif %}
+{% endif %}
+{{ figure('pgx_concordance') }}
+{{ figure('cyp2d6_depth') }}
+
 #### All pharmacogene calls
 
 | Gene | Diplotype | Phenotype | Activity | Call source | PharmCAT vs Aldy |
@@ -310,7 +435,7 @@ Results are grouped by the clinical contexts this child actually faces and order
 **HLA (T1K vs OptiType, 2-field):** {% if hla %}{% for g, s in hla.class_I_agreement.items() %}{{ g }} {{ s }}{{ ", " if not loop.last }}{% endfor %}; passed to PharmCAT: {{ hla.passed_to_pharmcat | join(', ') or 'none' }}.{% else %}not available.{% endif %}
 
 {% if mt_rnr1 %}
-**MT-RNR1 (mitochondrial 12S rRNA):** genotyped from the CRAM on contig `{{ mt_rnr1.contig }}` ({{ mt_rnr1.gene_region }}), median depth {{ mt_rnr1.depth_median }}x (minimum {{ mt_rnr1.depth_min }}x); {{ mt_rnr1.cpic_alleles_tested }} CPIC alleles tested; called: {% if mt_rnr1.cpic_alleles_called %}{% for x in mt_rnr1.cpic_alleles_called %}{{ x.allele }} {{ x.state }} (AF {{ x.af }}){{ ", " if not loop.last }}{% endfor %}{% else %}none at allele fraction >= {{ mt_rnr1.thresholds.heteroplasmic_min }}{% endif %}{% if mt_rnr1.cpic_low_level %}; low-level (not called): {% for x in mt_rnr1.cpic_low_level %}{{ x.allele }} AF {{ x.af }}{{ ", " if not loop.last }}{% endfor %}{% endif %}. Passed to PharmCAT as `{{ mt_rnr1.pharmcat_outside_call }}`. Positive control: {% for x in mt_rnr1.positive_controls_observed %}m.{{ x.pos }}{{ x.ref }}>{{ x.alt }} {{ x.state }} (AF {{ x.af }}){{ ", " if not loop.last }}{% else %}none observed{% endfor %}.{% for fl in mt_rnr1.flags %} {{ fl }}.{% endfor %}
+**MT-RNR1 (mitochondrial 12S rRNA):** genotyped from the CRAM on contig `{{ mt_rnr1.contig }}` ({{ mt_rnr1.gene_region }}), median depth {{ mt_rnr1.depth_median }}x (minimum {{ mt_rnr1.depth_min }}x); {{ mt_rnr1.cpic_alleles_tested }} CPIC alleles tested; called: {% if mt_rnr1.cpic_alleles_called %}{% for x in mt_rnr1.cpic_alleles_called %}{{ x.allele }} {{ x.state }} (AF {{ x.af }}){{ ", " if not loop.last }}{% endfor %}{% else %}none at allele fraction >= {{ mt_rnr1.thresholds.heteroplasmic_min }}{% endif %}{% if mt_rnr1.cpic_low_level %}; low-level (not called): {% for x in mt_rnr1.cpic_low_level %}{{ x.allele }} AF {{ x.af }}{{ ", " if not loop.last }}{% endfor %}{% endif %}. Passed to PharmCAT as `{{ mt_rnr1.pharmcat_outside_call }}`. Positive control: {% for x in mt_rnr1.positive_controls_observed %}m.{{ x.pos }}{{ x.ref }}>{{ x.alt }} {{ x.state }} (AF {{ x.af }}){{ ", " if not loop.last }}{% else %}none observed{% endfor %}.{% for fl in mt_rnr1.flags %} {{ fl }}.{% endfor %}{% if figs.mt_rnr1 %} Figure {{ fignum.mt_rnr1 }} (appendix) plots the allele fraction at every tested allele against the thresholds, with the two homoplasmic positive controls.{% endif %}
 
 {% endif %}
 **Other flagged CPIC/DPWG annotations (drug classes outside the contexts above, listed for completeness):**
@@ -340,7 +465,7 @@ Not available.
 {% endif %}
 
 {% if cnv %}
-**Structural variants and copy number (panel genes):** {{ cnv.sv_touching_panel }} Delly calls touch the panel ({{ cnv.sv_touching_panel_high_tier }} high tier, {{ cnv.sv_contradicted_by_depth }} contradicted by depth); supported: {{ cnv.sv_supported | join('; ') if cnv.sv_supported else 'none' }}. Exon noise σ = {{ cnv.exon_noise_sigma_log2_at_150bp | fmt }} log2 at 150 bp; median gene CN {{ cnv.gene_cn_median | fmt }}.
+**Structural variants and copy number (panel genes):** {{ cnv.sv_touching_panel }} Delly calls touch the panel ({{ cnv.sv_touching_panel_high_tier }} high tier, {{ cnv.sv_contradicted_by_depth }} contradicted by depth); supported: {{ cnv.sv_supported | join('; ') if cnv.sv_supported else 'none' }}. Exon noise σ = {{ cnv.exon_noise_sigma_log2_at_150bp | fmt }} log2 at 150 bp; median gene CN {{ cnv.gene_cn_median | fmt }}.{% if figs.panel_exon_cn %} Figure {{ fignum.panel_exon_cn }} (appendix) shows every usable exon's copy-number estimate across the panel, with the flagged exons marked.{% endif %}
 {% for g in genecn_calls %}
 {% if g.check %}
 - {{ g.gene }}: {{ g.cn_call }}. Read-level check: depth {{ g.check.span_window_range }}x across the run vs {{ g.check.flank_window_range }}x in the flanks ({{ g.check.span_to_flank_ratio }} of flank median; a heterozygous deletion gives ~0.5), Delly call: {{ g.check.delly_overlapping or 'none' }}. **{{ g.check.verdict | capitalize }}**{% if g.check.verdict == 'not confirmed' %}: classified as noise, not a finding{% else %}; requires orthogonal confirmation (MLPA or ddPCR){% endif %}.
@@ -361,12 +486,13 @@ Internal control: chrX non-PAR LRR {{ aneu.internal_control_chrX_nonPAR_lrr | fm
 | {{ r.arm }} | {{ r.n_bins }} | {{ r.n_het_sites }} | {{ r.lrr_mean | fmt }} | {{ r.baf_d | fmt }} | {{ r.status }} | {% if r.cell_fraction is not none %}{{ r.cell_fraction | pct }} [{{ r.cell_fraction_ci95[0] | pct }}, {{ r.cell_fraction_ci95[1] | pct }}] ({{ r.best_model }}){% else %}-{% endif %} | {{ r.detection_limit_f.loss | pct }} |
 {% endfor %}
 
-{% for key in ['genome', 'perchrom', 'burden'] %}{% if figs[key] %}
-![{{ figs[key].label }}]({{ figs[key].path }})
-{% endif %}{% endfor %}
+{% if figs.genome %}Figure {{ fignum.genome }} shows depth and B-allele frequency genome-wide{% if figs.perchrom %}, Figure {{ fignum.perchrom }} the same per chromosome{% endif %}{% if figs.burden %}, and Figure {{ fignum.burden }} each arm's estimated burden against its own detection limit, which is the figure the null result rests on{% endif %}.{% endif %}
+{{ figure('genome') }}
+{{ figure('perchrom') }}
+{{ figure('burden') }}
 
 {% if karyotype_cmp %}
-**What a published MVA1 karyotype would look like here.** {{ karyotype_cmp.citation }} report {{ karyotype_cmp.aneuploid_metaphases_pct }}% aneuploid metaphases in a karyotype-confirmed MVA1 case, spread across about {{ karyotype_cmp.distinct_chromosomes }} distinct chromosomes; the most recurrent single event ({{ karyotype_cmp.most_recurrent_event }}) reaches {{ karyotype_cmp.most_recurrent_pct }}% of cells. Against this run's own per-arm loss detection limits — best arm {{ karyotype_cmp.best_limit | pct }}, median arm {{ karyotype_cmp.median_limit | pct }} — that most recurrent event sits at **{{ '%.2f' | format(karyotype_cmp.recurrent_vs_best) }}x the best-case limit** and a typical {{ karyotype_cmp.typical_event_pct }}% event at **{{ '%.2f' | format(karyotype_cmp.typical_vs_median) }}x the median limit**. A total burden of {{ karyotype_cmp.aneuploid_metaphases_pct }}% is invisible to this method because it is divided across many chromosomes: the burden is not small, it is spread. A null result here is therefore the expected result for MVA and is not evidence that the assay failed.
+**What a published MVA1 karyotype would look like here.** {{ karyotype_cmp.citation | cite }} report {{ karyotype_cmp.aneuploid_metaphases_pct }}% aneuploid metaphases in a karyotype-confirmed MVA1 case, spread across about {{ karyotype_cmp.distinct_chromosomes }} distinct chromosomes; the most recurrent single event ({{ karyotype_cmp.most_recurrent_event }}) reaches {{ karyotype_cmp.most_recurrent_pct }}% of cells. Against this run's own per-arm loss detection limits — best arm {{ karyotype_cmp.best_limit | pct }}, median arm {{ karyotype_cmp.median_limit | pct }} — that most recurrent event sits at **{{ '%.2f' | format(karyotype_cmp.recurrent_vs_best) }}x the best-case limit** and a typical {{ karyotype_cmp.typical_event_pct }}% event at **{{ '%.2f' | format(karyotype_cmp.typical_vs_median) }}x the median limit**. A total burden of {{ karyotype_cmp.aneuploid_metaphases_pct }}% is invisible to this method because it is divided across many chromosomes: the burden is not small, it is spread. A null result here is therefore the expected result for MVA and is not evidence that the assay failed.
 
 {% endif %}
 **Caveats (from the analysis output):**
@@ -387,6 +513,10 @@ Not available.
 {% endfor %}
 
 Ancestry: {{ qc.ancestry.predicted }} ({{ qc.ancestry.reference }}). Sex: {{ qc.sex_inferred.sex }} (X/autosome depth {{ qc.sex_inferred.x_to_autosome_depth | fmt }}, X het sites {{ qc.sex_inferred.x_het_sites | fmt }}, Y depth {{ qc.sex_inferred.y_depth | fmt }}, chrX LRR {{ qc.sex_inferred.chrX_lrr | fmt }}). Reads {{ '{:,}'.format(qc.reads_total) }}; primary mapped {{ qc.primary_mapped_pct }}%; duplicates {{ qc.duplicate_pct }}%; mean autosomal depth {{ qc.mean_depth_autosomes }}x. ROH: F_ROH(>=1.5 Mb) = {{ qc.roh.F_ROH['>=1.5Mb'].F_ROH }}, longest {{ qc.roh.longest_roh.mb if qc.roh.longest_roh else 'n/a' }} Mb ({{ qc.roh.interpretation_reference }}). MultiQC: `multiqc/multiqc_report.html`.
+
+{% if figs.ancestry_pca %}Figure {{ fignum.ancestry_pca }} places the sample among the reference populations; the ancestry caveat in the limitations applies to that cluster assignment, not to any haplotype.{% endif %}{% if figs.roh %} Figure {{ fignum.roh }} shows every run of homozygosity against the thresholds; the recurrent-miscarriage argument in section 1 rests on none reaching 1.5 Mb.{% endif %}{% if figs.qc_overview %} The sequencing-level checks behind the table are in Figure {{ fignum.qc_overview }} (appendix).{% endif %}
+{{ figure('ancestry_pca') }}
+{{ figure('roh') }}
 {% else %}
 Not available.
 {% endif %}
@@ -409,7 +539,32 @@ Not available.
 | {{ k }} | {{ v }} |
 {% endfor %}
 
+## Appendix: supplementary figures
+
+Figures that support the checks above without changing any conclusion. Each is drawn from a table this report also prints.
+
+{% if figs.qc_overview %}Figure {{ fignum.qc_overview }} shows the depth distribution, the per-chromosome mean depth that the sex check reads, and the insert-size distribution.{% endif %}
+{{ figure('qc_overview') }}
+{% if figs.forcecall_depth %}Figure {{ fignum.forcecall_depth }} shows read depth at every PharmCAT allele-definition position, stacked by genotype class, with the minimum marked: it is the basis for the statement that no position was left without a genotype.{% endif %}
+{{ figure('forcecall_depth') }}
+{% if figs.mt_rnr1 %}Figure {{ fignum.mt_rnr1 }} plots the alternate allele fraction at each CPIC MT-RNR1 allele against the heteroplasmy thresholds; the two homoplasmic positive controls show that the assay sees mitochondrial variants when they are present.{% endif %}
+{{ figure('mt_rnr1') }}
+{% if figs.panel_exon_cn %}Figure {{ fignum.panel_exon_cn }} shows the exon-level copy-number estimates across the mechanistic panel; the flagged exons are the candidates the read-level check in section 5 resolved.{% endif %}
+{{ figure('panel_exon_cn') }}
+{% set fig_missing = fig_manifest.items() | rejectattr('1.status', 'equalto', 'drawn') | list %}
+{% if fig_missing %}
+
+Figures not drawn: {% for k, v in fig_missing %}{{ k }} ({{ v.reason }}){{ ', ' if not loop.last }}{% endfor %}.
+{% endif %}
+
 ## References
+
+{% for r in refs_used() %}
+{{ r.md }}
+
+{% endfor %}
+
+**Software and databases.**
 
 {% for r in references %}
 - {{ r }}

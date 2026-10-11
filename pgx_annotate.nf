@@ -50,12 +50,20 @@ workflow {
         error "${drug_list}: 'candidates' is empty. Fill it in (see assets/drugs_track2.template.yml); nothing is assumed."
     }
     if (drug_list) {
-        def missing = (spec.candidates ?: []).findAll { !it.name || it.axis == null || it.tier == null }
-        if (missing) error "${drug_list}: every candidate needs name, axis and tier; incomplete: ${missing}"
-        def axes = (spec.axes ?: [:]).keySet().collect { it.toString() }
+        // an axis with role 'regimen' holds treatment already given: no tier (it is not a proposal), and
+        // its drugs are queried whatever the anti-target rules say (see bin/resolve_candidates.py)
+        def axes_spec = (spec.axes ?: [:]).collectEntries { k, v -> [ (k.toString()): (v ?: [:]) ] }
+        def regimen_axes = axes_spec.findAll { k, v -> v.role == 'regimen' }.keySet()
+        def missing = (spec.candidates ?: []).findAll {
+            !it.name || it.axis == null || (it.tier == null && !(it.axis.toString() in regimen_axes))
+        }
+        if (missing) error "${drug_list}: every candidate needs name, axis and tier (tier is optional on a regimen axis); incomplete: ${missing}"
+        def axes = axes_spec.keySet().toList()
         def orphan = (spec.candidates ?: []).collect { it.axis.toString() }.unique().findAll { !(it in axes) }
         if (orphan) error "${drug_list}: candidates reference axes that are not defined: ${orphan.join(', ')}"
-        log.info "Stage 1b: ${spec.candidates.size()} candidate(s) by name across ${axes.size()} axes, list '${list_label}'"
+        def n_regimen = (spec.candidates ?: []).count { it.axis.toString() in regimen_axes }
+        log.info "Stage 1b: ${spec.candidates.size()} candidate(s) by name across ${axes.size()} axes " +
+                 "(${n_regimen} on regimen axes, queried regardless of the anti-target verdict), list '${list_label}'"
     }
 
     def drugs = params.drugs ? (params.drugs instanceof List ? params.drugs : params.drugs.toString().tokenize(','))
@@ -77,6 +85,9 @@ workflow {
     calls_json   = file(params.pgx_calls_json   ?: "${pgx_dir}/${params.sample_id}.pgx_calls.json", checkIfExists: true)
     report_json  = file(params.pharmcat_report  ?: "${pgx_dir}/pharmcat/${params.sample_id}.report.json", checkIfExists: true)
     stage1a_vcf  = file(params.pgx_forcecall_vcf ?: "${pgx_dir}/forcecall/${params.sample_id}.pgx_forcecall.vcf.gz", checkIfExists: true)
+    // the mitochondrial caller's own result: Open Targets' aminoglycoside rows carry an rsID but no
+    // coordinates, so they are matched against this rather than against the force-called positions
+    mt_rnr1_json = file(params.mt_rnr1_json ?: "${pgx_dir}/mt_rnr1/${params.sample_id}.mt_rnr1.json", checkIfExists: true)
     stage1a_csi  = file("${stage1a_vcf}.csi", checkIfExists: true)
 
     // first node: CRAM <-> reference M5 validation
@@ -121,6 +132,8 @@ workflow {
         OT_GENES.out.json.map { it[2] }.first(),
         OT_META.out.json.map { it[2] }.first(),
         ch_candidates.first(),
+        mt_rnr1_json,
+        file(params.mt_rnr1_cpic_alleles, checkIfExists: true),
         list_label,
         list_example as boolean
     )

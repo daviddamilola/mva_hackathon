@@ -32,9 +32,32 @@ Provenance → References → Acknowledgement.
 - **Missing is explicit.** Inputs are staged into the REPORT task and resolved by file name. A
   missing input is listed at the top of the report under "Missing inputs", and each dependent
   section prints "not available". Nothing is filled in.
-- **Figures are regenerated.** The genome-wide LRR/BAF plot, the per-chromosome plot and the
-  per-arm burden plot are copied from this run's outputs into `figures/`. No figure is stored in
-  the repo.
+- **Citations follow APA 7.** Literature lives in `assets/report/literature.yml` as structured
+  entries (authors, year, sentence-case title, journal, volume, issue, pages, DOI or URL),
+  generated from NCBI E-utilities and Crossref records rather than transcribed. Any rendered text
+  cites with `[@key]` for a parenthetical citation, `[@+key]` for a narrative one and `[@-key]`
+  for the bare form inside an existing parenthesis; structured literature entries (clinical
+  contexts, anti-target rules) are matched by PMID. The References section lists the entries
+  actually cited, alphabetically, in APA 7 form with the DOI as a link, followed by the tool and
+  database list. An unknown key renders as `[?key]` and is reported on the renderer's stdout.
+- **Figures are regenerated.** The genome-wide LRR/BAF plot, the per-chromosome plot, the per-arm
+  burden plot and the domain map are copied from this run's outputs into `figures/`. Nine more are
+  drawn by `REPORT_FIGURES` (`bin/report_figures.py`) from tables the report also prints, so a
+  figure never carries a number the text does not. No figure is stored in the repo.
+  - In the body: three-caller concordance and the CYP2D6 locus depth track (section 4, the latter
+    from `PGX_LOCUS_DEPTH`, all reads and MAPQ >= 20 over CYP2D6/CYP2D7); the stage 1b evidence-level
+    heatmap (section 3, regimen block); the ancestry PCA against 1000 Genomes and the
+    runs-of-homozygosity plot (section 7).
+  - In the appendix: sequencing QC (depth distribution, per-chromosome depth as the sex check,
+    insert size), depth at the PharmCAT positions by genotype class, MT-RNR1 allele fractions
+    against the heteroplasmy thresholds, and exon copy number across the mechanistic panel.
+  - Figures are numbered in order of appearance (`fignum` in the renderer, `\ref` in LaTeX) and
+    every one is referred to from the prose that it supports, so the figure is part of the
+    argument rather than an illustration beside it. A figure that was not drawn takes no number
+    and its reference sentence is omitted with it.
+  - Every figure is optional. `<sample>.figures.json` records which were drawn and why any was
+    not, and the appendix prints the gaps. Colours follow one palette (categorical slots in fixed
+    order, one-hue sequential blue, reserved status colours always paired with a text label).
 - **Framing.** The report opens with the research-hypothesis statement. Methods state that the
   analysis was scoped to the listed panels and that ACMG secondary findings were not screened.
 - **Stage 1b (Open Targets verdicts)** is shown only when its summary records the drug list that
@@ -45,6 +68,9 @@ Provenance → References → Acknowledgement.
   - This fixed a real problem: the first report displayed the example-list verdicts as if they
     were the candidate drugs.
   - `pgx_annotate.nf` now stops if `drug_list_label` is unset.
+  - Axes with `role: regimen` are rendered in a separate block, "Treatment the child is already
+    receiving", never as repurposing candidates, and the summary bullet counts them apart. The
+    rhabdomyosarcoma context's "no PharmCAT annotation" line then points to that block.
   - `assets/NO_OT_SUMMARY` is an empty placeholder, so the input channel is never empty.
 
 ## PDF

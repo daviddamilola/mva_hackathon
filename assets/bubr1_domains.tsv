@@ -1,5 +1,5 @@
 # BubR1 (BUB1B, UniProt O60566, 1050 aa) domain organisation.
-# Source: Pavone P et al., Neurol Sci 2022;43:6529-38 (PMID 35804254), Figure 3
+# Source: Pavone P et al., Neurol Sci 2022;43:6529-38 (PMID 35804254), their Figure 3
 # The first three domains interact with the kinetochore; the kinase domain regulates the spindle
 # assembly checkpoint.
 protein	length	domain	start	end	role

@@ -52,5 +52,9 @@ workflow GENOME_QC {
     emit:
     qc_json  = QC_SUMMARY.out.json
     multiqc  = MULTIQC.out.report
+    // raw inputs the report figures are drawn from
+    samtools_stats = SAMTOOLS_STATS.out.stats.map { meta, stats, flagstat -> stats }
+    somalier_html  = SOMALIER.out.html
+    roh_txt        = BCFTOOLS_ROH.out.roh
     versions = ch_versions
 }

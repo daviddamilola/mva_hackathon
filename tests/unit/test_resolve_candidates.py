@@ -5,6 +5,7 @@ No network and no subject data: API responses come from a fixture, so the rule l
 under test. Each case targets a rule whose failure would be silent.
 Run:  python3 tests/unit/test_resolve_candidates.py
 """
+import csv
 import json
 import os
 import subprocess
@@ -192,6 +193,47 @@ def test_bad_patient_support_is_rejected():
                     "--prefix", f"{tmp}/out"], capture_output=True, text=True)
         assert p.returncode != 0, "an invalid patient_support must fail the run"
         assert "patient_support" in (p.stderr + p.stdout)
+
+
+def test_regimen_axis_is_queried_despite_anti_target_match():
+    """Treatment already given is annotated whatever the rules say; the match is a note, not an exclusion."""
+    with tempfile.TemporaryDirectory() as tmp:
+        spec = {"drug_list_label": "unit_test", "drug_list_example": True,
+                "axes": {1: {"title": "t", "rationale": "r"},
+                         "regimen": {"title": "given", "role": "regimen", "rationale": "r"}},
+                "candidates": [{"name": "inhibits_a_segregation_gene", "axis": "regimen",
+                                "patient_support": "released_feature"},          # no tier: allowed on a regimen axis
+                               {"name": "inhibits_a_segregation_gene", "axis": 1, "tier": "anti",
+                                "patient_support": "mechanism_only"}],
+                "anti_target_rules": RULES}
+        json.dump(spec, open(f"{tmp}/spec.yml", "w"))
+        json.dump(FIXTURE, open(f"{tmp}/fix.json", "w"))
+        p = subprocess.run(["python3", RESOLVE, "--candidates", f"{tmp}/spec.yml", "--fixture", f"{tmp}/fix.json",
+                            "--prefix", f"{tmp}/out"], capture_output=True, text=True)
+        assert p.returncode == 0, p.stderr
+        summary = json.load(open(f"{tmp}/out.candidates.json"))
+        queried = [x for x in open(f"{tmp}/out.query_ids.txt").read().splitlines() if x]
+        rows = list(csv.DictReader(open(f"{tmp}/out.resolved.tsv"), delimiter="\t"))
+        reg = next(r for r in rows if r["role"] == "regimen")
+        assert reg["anti_target"] == "excluded", "the verdict is still computed and recorded"
+        assert "CHEMBL_A" in queried, "a regimen drug is queried even when the rules match"
+        c = summary["counts"]
+        assert c["regimen"] == 1 and c["regimen_anti_target_hits"] == 1, c
+        assert c["excluded_by_anti_target"] == 1, "only the repurposing entry counts as excluded"
+        assert [x["name"] for x in summary["regimen_anti_target"]] == ["inhibits_a_segregation_gene"]
+        assert summary["axes"]["regimen"]["role"] == "regimen" and summary["axes"]["1"]["role"] == "repurposing"
+
+
+def test_unknown_axis_role_is_rejected():
+    with tempfile.TemporaryDirectory() as tmp:
+        spec = {"drug_list_label": "unit_test", "drug_list_example": True,
+                "axes": {1: {"title": "t", "rationale": "r", "role": "current"}},
+                "candidates": [cand("inhibits_an_unrelated_gene", 1, 3)], "anti_target_rules": RULES}
+        json.dump(spec, open(f"{tmp}/spec.yml", "w"))
+        json.dump(FIXTURE, open(f"{tmp}/fix.json", "w"))
+        p = subprocess.run(["python3", RESOLVE, "--candidates", f"{tmp}/spec.yml", "--fixture", f"{tmp}/fix.json",
+                            "--prefix", f"{tmp}/out"], capture_output=True, text=True)
+        assert p.returncode != 0 and "role" in (p.stderr + p.stdout)
 
 
 def test_empty_rules_exclude_nothing():

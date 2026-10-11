@@ -7,8 +7,9 @@ Status (updated 2026-09-27):
 | Reference rebuild, M5/contig validation | implemented, run | 01 |
 | Lane-wise FASTQ → CRAM | implemented, run | 01 |
 | PGx stage 1a: PharmCAT + Aldy + PyPGx, reconciled | implemented, run | 03 |
-| PGx stage 1b: Open Targets annotation (`pgx_annotate.nf`) | implemented; run on example drugs only | 03 |
+| PGx stage 1b: Open Targets annotation (`pgx_annotate.nf`) | implemented; run on Track 2 candidate list v1 (`assets/drugs_track2.yml`: regimen axis + irinotecan partners) | 03, 08 |
 | Modifier panel | implemented, run | 04 |
+| Readthrough characterisation of the PTC (`READTHROUGH_ANALYSIS`) | implemented, run | 04, 08 |
 | HLA typing (T1K + OptiType) | implemented, run | 03 |
 | Aneuploidy burden | implemented, run | 05 |
 | Panel CNV/SV (Delly + exon depth) | implemented, run | 05 |
@@ -73,7 +74,9 @@ data/ refs/ results/ work/    gitignored
   PharmCAT's definitions surface (doc 03).
 - **Second star-allele caller:** PyPGx 0.27.0 (Stargazer's successor; Stargazer itself needs a UW
   registration) runs in parallel with Aldy. `STAR_ALLELE_COMPARE` reports agreement.
-- **Stage 1b** is a separate entry point (`pgx_annotate.nf`) driven by a ChEMBL drug list.
+- **Stage 1b** is a separate entry point (`pgx_annotate.nf`) driven by a named drug list. An axis
+  may be marked `role: regimen` (treatment already given); its drugs bypass the anti-target
+  exclusion and are reported in their own block (doc 08).
 - **Modifier panel resources:** gnomAD v4.1 is fetched remotely for panel regions only, not
   downloaded. SpliceAI runs locally on panel variants rather than using precomputed scores or an
   external service. AlphaMissense is downloaded once, verified, cut to the panel and deleted.

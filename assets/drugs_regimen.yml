@@ -1,0 +1,79 @@
+# Stage 1b drug list: the standard rhabdomyosarcoma regimen, for pharmacogenomic annotation.
+#
+# This is NOT the Track 2 repurposing candidate set. It fulfils the promise made in the report's
+# rhabdomyosarcoma context (assets/report/clinical_contexts.yml, unannotated_note): the agents for
+# which PharmCAT holds no CPIC, DPWG or FDA annotation are looked up in Open Targets (ClinPGx), and
+# any annotated position outside the stage 1a panel is force-called from the CRAM and joined.
+#
+# Superseded for the report by assets/drugs_track2.yml, which carries this axis plus the proposed
+# candidates; keep this file for a run without proposals. The report shows whichever list ran last.
+#
+# One axis, role `regimen`: treatment the child is already receiving. The anti-target rules are still
+# evaluated and reported for these agents, as a mechanistic note, but they are queried regardless,
+# because the rules govern proposing new drugs and do not license withdrawing curative therapy
+# (docs/08). When the Track 2 candidate set is written, this axis is copied into that file alongside
+# the repurposing axes, so one run produces one report.
+#
+# Run:
+#   CONDA_SUBDIR=osx-arm64 nextflow run pgx_annotate.nf -profile conda,macos_docker \
+#       --drug_list_file assets/drugs_regimen.yml
+#
+# Epistemic rule (docs/09): rhabdomyosarcoma (HP:0002859) is a released feature, so the context is
+# patient-supported. The protocol this child actually receives is NOT in the released record. The
+# list is the standard regimen described in the literature, not the child's chart, and the report
+# says so.
+
+drug_list_label: rhabdomyosarcoma_regimen_v1
+drug_list_example: false
+
+axes:
+  regimen:
+    title: Standard rhabdomyosarcoma regimen
+    role: regimen
+    rationale: >-
+      Standard rhabdomyosarcoma therapy is VAC (vincristine, actinomycin-D, cyclophosphamide), commonly
+      with ifosfamide, etoposide, irinotecan or doxorubicin, and platinum agents or methotrexate in
+      some protocols. Rhabdomyosarcoma (HP:0002859) is a released feature of this child, so the
+      context is patient-supported; the specific protocol the child receives is not in the released
+      record, and this list is the standard regimen, not the child's chart. Rhabdomyosarcoma is
+      among the most frequent malignancies of MVA1 [@pavone2022]. Nine of these agents carry no
+      CPIC, DPWG or FDA annotation in PharmCAT; irinotecan does (UGT1A1) and is included so the
+      Open Targets layer and PharmCAT can be compared on one drug.
+
+candidates:
+  - {name: vincristine,      axis: regimen, patient_support: released_feature}
+  - {name: dactinomycin,     axis: regimen, patient_support: released_feature}
+  - {name: cyclophosphamide, axis: regimen, patient_support: released_feature}
+  - {name: ifosfamide,       axis: regimen, patient_support: released_feature}
+  - {name: etoposide,        axis: regimen, patient_support: released_feature}
+  - {name: irinotecan,       axis: regimen, patient_support: released_feature}
+  - {name: doxorubicin,      axis: regimen, patient_support: released_feature}
+  - {name: cisplatin,        axis: regimen, patient_support: released_feature}
+  - {name: carboplatin,      axis: regimen, patient_support: released_feature}
+  - {name: methotrexate,     axis: regimen, patient_support: released_feature}
+
+# Same rules as assets/drugs_track2.template.yml. For a regimen axis a match is reported as a
+# mechanistic note, not an exclusion; the drug is queried either way.
+anti_target_rules:
+  go_terms:
+    GO:0007059: chromosome segregation
+    GO:0000070: mitotic sister chromatid segregation
+    GO:0000819: sister chromatid segregation
+    GO:0098813: nuclear chromosome segregation
+    GO:0007094: mitotic spindle assembly checkpoint signaling
+    GO:0007052: mitotic spindle organization
+  inhibitory_action_types:
+    - INHIBITOR
+    - ANTAGONIST
+    - BLOCKER
+    - DEGRADER
+    - DISRUPTING AGENT
+    - NEGATIVE ALLOSTERIC MODULATOR
+    - NEGATIVE MODULATOR
+  literature:
+    - targets: [MTOR, FKBP1A]
+      pmid: "35141499"
+      citation: Yamada C et al., iScience 2022;25:103675
+      statement: >-
+        mTORC1 inactivation induces mitotic slippage, overriding spindle assembly checkpoint
+        arrest, and causes chromosome instability; shown in budding yeast and human cells.

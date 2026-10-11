@@ -1,9 +1,41 @@
 # mva-track2
 
 Nextflow DSL2 pipeline for **Rare Disease, Real Kid: MVA Hackathon 2026, Track 2 (mechanism and
-drug repurposing)**. It extracts four things from one proband's WGS: pharmacogenomics, modifier
-genotypes in a mechanistic panel, mosaic aneuploidy burden, and genome QC. This is **not** a
-variant-discovery pipeline. Every output is a research hypothesis, not a treatment recommendation.
+drug repurposing)**. From one proband's germline WGS it derives the variant mechanism, then proposes
+repurposing candidates that follow from it. This is **not** a variant-discovery pipeline. Every output
+is a research hypothesis, not a treatment recommendation.
+
+**What it does, in order.** Re-aligns the FASTQ against a checked reference; characterises the causal
+variants against the protein's domain map; works out what a readthrough agent would actually produce
+at the nonsense allele (stop codon identity, 3′ context, and the near-cognate products scored with
+AlphaMissense); calls pharmacogenes three ways and reconciles them; lets a named drug list define a
+pharmacogenomic panel and joins it to the child's genotypes; measures mosaic aneuploidy with a stated
+detection limit; and renders one report with every figure and number traced to the step that produced
+it. A rule written as code excludes any candidate that inhibits a mitotic-fidelity gene, and reports
+what it rejected.
+
+**Run it on another sample** (no data, no downloads — checks the whole DAG):
+
+```bash
+cd tests/stub && nextflow run ../.. -profile stub -stub-run && cd ../..
+```
+
+For a real sample, point `--sample_id`, `--input` and `--reference_dir` at your own data and run the
+command under "Running" below. Everything is version-pinned and every bin/ script's digest is part of
+its task hash, so a changed script re-runs rather than silently reusing a cached result.
+
+| Doc | Report section it backs |
+|---|---|
+| [docs/00_data_inspection.md](docs/00_data_inspection.md) | data provenance, the corrupted-mount finding |
+| [docs/01_reference_and_alignment.md](docs/01_reference_and_alignment.md) | methods: reference and alignment |
+| [docs/02_pipeline_design.md](docs/02_pipeline_design.md) | overall structure; status of every branch |
+| [docs/03_pharmacogenomics.md](docs/03_pharmacogenomics.md) | sections 3 and 4: PGx calls, stage 1b join |
+| [docs/04_modifier_panel.md](docs/04_modifier_panel.md) | sections 1 and 5: variant mechanism, readthrough characterisation, modifier genotypes |
+| [docs/05_aneuploidy_burden.md](docs/05_aneuploidy_burden.md) | section 6: aneuploidy burden and detection limit |
+| [docs/06_genome_qc.md](docs/06_genome_qc.md) | section 7: genome QC |
+| [docs/07_report_and_provenance.md](docs/07_report_and_provenance.md) | how the report, its figures and its citations are built |
+| [docs/08_candidate_drugs_stage1b.md](docs/08_candidate_drugs_stage1b.md) | section 3: the candidate axes and the anti-target rule |
+| [docs/09_clinical_features_and_inference.md](docs/09_clinical_features_and_inference.md) | the epistemic rule governing every phenotype claim |
 
 ## Data handling
 
@@ -71,14 +103,9 @@ through `hf auth login` or `HF_TOKEN`.
 
 ## Docs
 
-- [00 — Data inspection](docs/00_data_inspection.md)
-- [01 — Reference reconstruction and re-alignment](docs/01_reference_and_alignment.md)
-- [02 — Pipeline design](docs/02_pipeline_design.md)
-- [03 — Pharmacogenomics](docs/03_pharmacogenomics.md)
-- [04 — Modifier panel](docs/04_modifier_panel.md)
-- [05 — Mosaic aneuploidy burden](docs/05_aneuploidy_burden.md)
-- [06 — Genome QC](docs/06_genome_qc.md)
-- [07 — Report and provenance](docs/07_report_and_provenance.md)
+Each doc records the design decisions and the aggregate findings behind one part of the report; the
+table at the top of this file maps them to report sections. They hold no genotypes and no clinical
+text. Numbered `docs/00` through `docs/09`.
 
 ## Acknowledgement
 

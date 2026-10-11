@@ -27,6 +27,7 @@ include { OPTITYPE_RUN        } from '../../../modules/local/optitype_run'
 include { HLA_RECONCILE       } from '../../../modules/local/hla_reconcile'
 include { MT_RNR1_CALL        } from '../../../modules/local/mt_rnr1_call'
 include { PHARMCAT_COUNTERFACTUAL } from '../../../modules/local/pharmcat_counterfactual'
+include { PGX_LOCUS_DEPTH     } from '../../../modules/local/pgx_locus_depth'
 
 workflow PGX_CALL {
     take:
@@ -65,6 +66,9 @@ workflow PGX_CALL {
 
     // MT-RNR1 (aminoglycosides): allele fractions on the mitochondrial contig -> PharmCAT outside call
     MT_RNR1_CALL(ch_valid_cram, file(params.mt_rnr1_cpic_alleles, checkIfExists: true), ch_ref)
+
+    // windowed depth over CYP2D6/CYP2D7: the read-level evidence behind the copy-number call (report figure)
+    PGX_LOCUS_DEPTH(ch_valid_cram, ch_ref)
 
     ch_pharmcat_in = PGX_FORCE_CALL.out.vcf
         .join(ALDY_PARSE.out.calls)
@@ -113,6 +117,7 @@ workflow PGX_CALL {
         PHARMCAT_SITES.out.versions,
         PGX_FORCE_CALL.out.versions,
         MT_RNR1_CALL.out.versions,
+        PGX_LOCUS_DEPTH.out.versions,
         PHARMCAT_COUNTERFACTUAL.out.versions,
         ALDY_GENOTYPE.out.versions.first(),
         ALDY_PARSE.out.versions,
@@ -131,5 +136,6 @@ workflow PGX_CALL {
     forcecall_summary = PGX_FORCE_CALL.out.summary
     mt_rnr1    = MT_RNR1_CALL.out.json
     counterfactual = PHARMCAT_COUNTERFACTUAL.out.json
+    locus_depth = PGX_LOCUS_DEPTH.out.depth     // [ meta, tsv ]
     versions   = ch_versions
 }

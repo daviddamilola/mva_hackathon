@@ -89,6 +89,8 @@ process PGX_FORCE_CALL {
     touch ${meta.id}.pgx_forcecall.constrained.vcf.gz ${meta.id}.pgx_forcecall.unconstrained.vcf.gz
     printf 'chrom\\tpos\\tid\\tdefinition_ref\\tdefinition_alts\\tobserved_ref\\tobserved_undefined_alt\\tobserved_gt\\tobserved_ad\\tobserved_dp\\tconstrained_gt\\n' > ${meta.id}.off_definition.tsv
     echo '{"stub": true}' > ${meta.id}.pgx_forcecall.summary.json
+    touch ${meta.id}.pgx_forcecall.evidence.tsv
+    echo '{"stub": true}' > ${meta.id}.pgx_forcecall.evidence.summary.json
     cat <<-END_VERSIONS > versions.yml
     "${task.process}":
         bcftools: 1.22

@@ -14,6 +14,7 @@ include { SPLICEAI            } from '../../../modules/local/spliceai'
 include { VEP_ANNOTATE        } from '../../../modules/local/vep_annotate'
 include { MODIFIER_REPORT     } from '../../../modules/local/modifier_report'
 include { VARIANT_MECHANISM   } from '../../../modules/local/variant_mechanism'
+include { READTHROUGH_ANALYSIS } from '../../../modules/local/readthrough_analysis'
 
 workflow MODIFIER_PANEL {
     take:
@@ -57,7 +58,17 @@ workflow MODIFIER_PANEL {
                                       SPLICEAI.out.versions, VEP_ANNOTATE.out.versions, MODIFIER_REPORT.out.versions,
                                       VARIANT_MECHANISM.out.versions)
 
+    // what a readthrough agent would actually produce at the PTC: stop codon, 3' context, scored products
+    READTHROUGH_ANALYSIS(
+        VEP_ANNOTATE.out.vcf.combine(VARIANT_MECHANISM.out.nmd_json).combine(VARIANT_MECHANISM.out.domain_json),
+        ch_ref,
+        CLINVAR_FETCH.out.vcf
+    )
+    ch_versions = ch_versions.mix(READTHROUGH_ANALYSIS.out.versions)
+
     emit:
+    readthrough     = READTHROUGH_ANALYSIS.out.json
+    readthrough_tsv = READTHROUGH_ANALYSIS.out.tsv
     rare_functional = MODIFIER_REPORT.out.rare_functional
     all             = MODIFIER_REPORT.out.all
     summary         = MODIFIER_REPORT.out.summary

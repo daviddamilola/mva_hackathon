@@ -13,6 +13,8 @@ process PGX_JOIN {
     path target_json
     path meta_json
     path candidates_json
+    path mt_rnr1_json
+    path mt_alleles
     val drug_list_label
     val drug_list_example
 
@@ -26,10 +28,14 @@ process PGX_JOIN {
     script:
     def direct = params.ot_include_direct_targets ? '--include-direct-targets' : ''
     def example = drug_list_example ? '--drug-list-example' : ''
+    // Nextflow does not hash bin/: the script digest is part of the task so a changed join re-runs on -resume
+    def script_md5 = file("${projectDir}/bin/pgx_join.py").text.md5()
     """
+    # pgx_join.py md5 ${script_md5}
     pgx_join.py --calls ${calls_json} --pharmcat-report ${pharmcat_report} \\
         --vcf ${stage1a_vcf} ${ot_vcf} --drugs ${drug_jsons} --targets ${target_json} --meta ${meta_json} \\
-        --candidates ${candidates_json} --assert-levels '${params.ot_assert_levels}' ${direct} \\
+        --candidates ${candidates_json} --mt-rnr1 ${mt_rnr1_json} --mt-alleles ${mt_alleles} \\
+        --assert-levels '${params.ot_assert_levels}' ${direct} \\
         --drug-list-label '${drug_list_label}' ${example} --prefix ${meta.id}.pgx_ot
 
     cat <<-END_VERSIONS > versions.yml
@@ -38,6 +44,7 @@ process PGX_JOIN {
         open_targets_release: "\$(python3 -c 'import json; print(json.load(open("${meta_json}"))["data_release"])')"
         open_targets_api: "\$(python3 -c 'import json; print(json.load(open("${meta_json}"))["api_version"])')"
         asserted_levels: "${params.ot_assert_levels}"
+        pgx_join_py_md5: "${script_md5}"
     END_VERSIONS
     """
 

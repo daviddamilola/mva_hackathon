@@ -122,3 +122,30 @@ limits below, not proof of absence.
   secondary-findings screen was done.
 - **Licences.** AlphaMissense scores and SpliceAI model weights are licensed for non-commercial
   use.
+
+## Readthrough characterisation of the nonsense allele
+
+`READTHROUGH_ANALYSIS` (`bin/readthrough_analysis.py`) answers the question a readthrough proposal
+actually depends on, which is not "is there a stop codon" but "what protein would a readthrough agent
+produce". Three things are derived, none asserted:
+
+| Step | Source | Why it matters |
+|---|---|---|
+| Stop codon identity | VEP's `Codons` field, re-checked against the reference at the derived codon coordinates | UGA is the most readthrough-permissive of the three stop codons and the one ataluren was characterised against; UAA is the least |
+| +4 base | the reference genome, one base 3' of the derived codon | the strongest single-nucleotide influence on readthrough efficiency, in the order C > U > G > A |
+| Readthrough products | near-cognate decoding table per stop codon, scored with AlphaMissense | readthrough does not restore the reference residue; at UGA it inserts Trp, Arg or Cys, so the rescued protein is one of three specific full-length proteins |
+
+**Why a second AlphaMissense file.** The near-cognate products are reachable by one nucleotide change
+from the *mutant* stop codon but not from the *reference* codon, so they are absent from the
+reference-anchored SNV file the rest of the panel uses. The module streams the all-amino-acid
+substitution file and keeps a single UniProt accession, so the 1.2 GB source is read but never stored.
+All 19 substitutions at the residue are reported, not just the three, because a residue that tolerates
+everything is a weaker claim than three lucky draws; the regional means say whether the residue is
+unusual for its part of the protein.
+
+The module also counts, from the ClinVar release the pipeline already fetches, how many of the gene's
+pathogenic and likely-pathogenic alleles are truncating. That is what says whether a readthrough axis
+reaches beyond one child.
+
+Nothing in the module is specific to this gene or disease: `--gene`, `--uniprot` and the stop-codon
+table are the only inputs that change.

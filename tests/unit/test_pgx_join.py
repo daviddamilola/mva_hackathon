@@ -122,5 +122,28 @@ with tempfile.TemporaryDirectory() as tmp:
     rows, _ = run(tmp, star_calls, {"drugs": {}}, [nullt], [("1", 900, "A", ".", "0/0")])
     check("null target and targetFromSourceId handled (gene UNKNOWN)", rows[0]["gene"] == "UNKNOWN" and rows[0]["flag"] == "no flag")
 
+# candidate roles: an anti-target match on a repurposing candidate becomes a placeholder "excluded" row
+# (it was not queried); the same match on a regimen candidate does not, because it WAS queried and has
+# real rows. Both carry their role into the verdict table.
+with tempfile.TemporaryDirectory() as tmp:
+    cands = {"candidates": {
+        "CHEMBL1": {"name": "given_drug", "matched_name": "GIVEN", "axis": "regimen", "role": "regimen",
+                    "tier": None, "patient_support": "released_feature", "anti_target": "excluded",
+                    "anti_target_reason": "INHIBITOR of SEGGENE"},
+        "CHEMBL9": {"name": "proposed_drug", "matched_name": "PROPOSED", "axis": 7, "role": "repurposing",
+                    "tier": "anti", "patient_support": "mechanism_only", "anti_target": "excluded",
+                    "anti_target_reason": "INHIBITOR of SEGGENE"}},
+        "axes": {"regimen": {"title": "given", "role": "regimen", "rationale": "r"}},
+        "counts": {"regimen": 1}, "regimen_anti_target": [{"name": "given_drug", "axis": "regimen", "reason": "x"}]}
+    json.dump(cands, open(f"{tmp}/cands.json", "w"))
+    given = {"query_id": "CHEMBL1", "query_name": "GIVEN", "resolution": [], "rows": [row(haplotypeId="TPMT*3A", genotype="*3A")]}
+    rows, summ = run(tmp, star_calls, {"drugs": {}}, [given], [], extra_args=("--candidates", f"{tmp}/cands.json"))
+    g = [r for r in rows if r["drug"] == "CHEMBL1"]
+    check("regimen drug joined to its real rows", g and g[0]["gene"] == "TPMT" and g[0]["role"] == "regimen")
+    check("regimen anti-target match adds no placeholder row", not any(r["flag"] == "excluded (anti-target)" for r in g))
+    p9 = [r for r in rows if r["drug"] == "CHEMBL9"]
+    check("repurposing exclusion still gets its placeholder row", p9 and p9[0]["flag"] == "excluded (anti-target)" and p9[0]["role"] == "repurposing")
+    check("regimen_anti_target carried into the summary", summ["drug_list"].get("regimen_anti_target") == cands["regimen_anti_target"])
+
 print(f"\n{len(failures)} failure(s)")
 sys.exit(1 if failures else 0)

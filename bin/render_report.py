@@ -129,24 +129,48 @@ SUPPORT_HEADING = {
                        "These axes follow from the variants themselves rather than from any observed feature."),
 }
 ot_by_axis = []
-for ax in sorted(ot_axes, key=str):
+def axis_order(ax):
+    o = (ot_axes.get(ax) or {}).get("order")
+    return (0, o, str(ax)) if o is not None else (1, 0, str(ax))
+
+
+for ax in sorted(ot_axes, key=axis_order):
     rows = [r for r in (ot_ver or []) if str(r.get("axis")) == str(ax)]
     drugs = []
     for name in dict.fromkeys(r.get("drug_name") for r in rows):
         drows = [r for r in rows if r.get("drug_name") == name]
         c = next((v for v in ot_cands.values() if (v.get("matched_name") or v.get("name")) == name), {})
-        drugs.append({"name": name, "tier": drows[0].get("tier"), "rows": drows,
+        ba = ((ot_sum or {}).get("below_asserted_by_drug") or {}).get(drows[0].get("drug")) or {}
+        ba_text = ", ".join(f"level {k}: {v}" for k, v in (ba.get("by_level") or {}).items())
+        if ba.get("genes_level_2"):
+            ba_text += " (level-2 genes: " + ", ".join(ba["genes_level_2"]) + ")"
+        drugs.append({"name": name, "tier": drows[0].get("tier"), "rows": drows, "below_asserted": ba_text,
                       "support": drows[0].get("patient_support") or c.get("patient_support"),
                       "stage": c.get("max_clinical_stage") or "", "investigational": c.get("investigational"),
-                      "move_up": c.get("move_up") or "", "anti_target": c.get("anti_target")})
+                      "move_up": c.get("move_up") or "", "caution": c.get("caution") or "",
+                      "anti_target": c.get("anti_target"),
+                      "anti_target_reason": c.get("anti_target_reason") or ""})
     support = next((d["support"] for d in drugs if d.get("support")), None)
     ot_by_axis.append({"axis": ax, "title": ot_axes[ax].get("title"), "rationale": ot_axes[ax].get("rationale"),
+                       "role": ot_axes[ax].get("role") or "repurposing",
                        "drugs": drugs, "patient_support": support})
+# treatment the child is already receiving is reported in its own block, never as a repurposing axis:
+# the anti-target rules do not apply to it, and its drugs were queried whatever the rules said
+ot_regimen = [x for x in ot_by_axis if x["role"] == "regimen"]
+ot_by_axis = [x for x in ot_by_axis if x["role"] != "regimen"]
+ot_n_regimen = ot_counts.get("regimen", 0) if ot_counts else 0
+ot_n_repurposing = (ot_counts.get("candidates", 0) - ot_n_regimen) if ot_counts else 0
+ot_regimen_anti_target = dl.get("regimen_anti_target") or []
+ot_regimen_names = {str(n).lower() for x in ot_regimen for d in x["drugs"] for n in (d["name"] or "").split("; ")}
+ot_regimen_names |= {str(v.get("name") or "").lower() for v in ot_cands.values() if v.get("role") == "regimen"}
 # axes grouped by how well the candidates in them are supported for THIS child
 ot_support_groups = [{"key": k, "heading": SUPPORT_HEADING[k][0], "blurb": SUPPORT_HEADING[k][1],
                       "axes": [x for x in ot_by_axis if x["patient_support"] == k]}
                      for k in SUPPORT_ORDER]
 ot_support_groups = [g for g in ot_support_groups if g["axes"]]
+# the groups themselves follow the leading axis in each, so a mechanism-directed axis is not pushed
+# below a tumour-directed one by its support level alone
+ot_support_groups.sort(key=lambda g: min(axis_order(x["axis"]) for x in g["axes"]))
 ot_support_ungrouped = [x for x in ot_by_axis if x["patient_support"] not in SUPPORT_ORDER]
 ot_excluded = dl.get("excluded") or []
 ot_unresolved = dl.get("unresolved") or []
@@ -291,6 +315,9 @@ for c in ctx_cfg["contexts"] if pc_report else []:
                          "panel_gap_note": " ".join((gap.get("note") or "").split()),
                          "panel_gap_genes": gap.get("genes") or {},
                          "unannotated": [d for d in c.get("unannotated_drugs") or [] if not drug_known(d)],
+                         # which of those the stage 1b regimen block has actually looked up, by name
+                         "unannotated_in_stage1b": [d for d in c.get("unannotated_drugs") or []
+                                                    if not drug_known(d) and d.lower() in ot_regimen_names],
                          "unannotated_annotated": [d for d in c.get("unannotated_drugs") or [] if drug_known(d)],
                          "unannotated_note": " ".join((c.get("unannotated_note") or "").split())})
 released_ctx = [c for c in pgx_contexts if c["patient_support"] == "released_feature"]
@@ -311,12 +338,15 @@ for r in cf_context_rows:
     for k in ("observed", "counterfactual"):
         r[k] = dict(r[k], recommendation=clean(r[k].get("recommendation")))
 mt_rnr1 = jload(f"pgx/mt_rnr1/{S}.mt_rnr1.json")
+# what a readthrough agent would produce at the PTC: stop codon, 3' context, and the scored products
+readthrough = jload(f"modifier_panel/{S}.readthrough.json")
+rt = ((readthrough or {}).get("ptcs") or [None])[0]
 
 # ---- aneuploidy arms
 arm_rows = [r for r in (arms or []) if r.get("tested")]
 # a published MVA1 karyotype against this run's own detection limits, so the null result can be read
 # as expected rather than as a broken pipeline (Pavone et al. 2022, PMID 35804254)
-PUBLISHED_KARYOTYPE = {"citation": "Pavone P et al., Neurol Sci 2022;43:6529-38 (PMID 35804254)",
+PUBLISHED_KARYOTYPE = {"citation": "[@+pavone2022]",
                        "aneuploid_metaphases_pct": 12, "distinct_chromosomes": 11,
                        "most_recurrent_event": "-18", "most_recurrent_pct": 2, "typical_event_pct": 1}
 _limits = sorted(r["detection_limit_f"]["loss"] for r in arm_rows
@@ -358,6 +388,9 @@ ctx = {
     "cn_resolved": [g for g, c in cn_verdict.items() if c["verdict"] == "not confirmed"],
     "ot_sum": ot_sum, "ot_status": ot_status, "ot_by_axis": ot_by_axis, "ot_counts": ot_counts,
     "ot_support_groups": ot_support_groups, "ot_support_ungrouped": ot_support_ungrouped,
+    "readthrough": readthrough, "rt": rt,
+    "ot_regimen": ot_regimen, "ot_n_regimen": ot_n_regimen, "ot_n_repurposing": ot_n_repurposing,
+    "ot_regimen_anti_target": ot_regimen_anti_target,
     "ot_excluded": ot_excluded, "ot_unresolved": ot_unresolved, "ot_rules": ot_rules, "ot_cov": ot_cov, "ot_flags": ot_flags, "ot_verdicts": ot_ver or [], "forcecall": forcecall,
     "figs": {
         "genome": fig(f"aneuploidy/{S}.aneuploidy.genome_lrr_baf.png", "Genome-wide depth (LRR) and B-allele frequency"),
@@ -365,9 +398,35 @@ ctx = {
         "burden": fig(f"aneuploidy/{S}.aneuploidy.arm_burden.png", "Per-arm aneuploidy burden vs detection limit"),
         "domains": fig(f"modifier_panel/{S}.domain_map.png",
                        "Protein domain organisation and this child's variants in the causal gene"),
+        # drawn by REPORT_FIGURES (bin/report_figures.py) from the tables this report also prints
+        "pgx_concordance": fig(f"{S}.pgx_concordance.png",
+                               "Pharmacogene calls by caller. The verdict column is the agreement status used in the table below; colour is never the only carrier."),
+        "cyp2d6_depth": fig(f"{S}.cyp2d6_depth.png",
+                            "CYP2D6 locus read depth relative to the autosomal mean, all reads and MAPQ >= 20. The elevated depth across CYP2D6 is the read-level evidence behind the duplication call."),
+        "readthrough_products": fig(f"{S}.readthrough_products.png",
+                                    "Predicted effect of every amino-acid substitution at the readthrough residue, with the three near-cognate products a readthrough agent would produce highlighted, and the residue set against its protein."),
+        "stage1b_levels": fig(f"{S}.stage1b_levels.png",
+                              "Open Targets (ClinPGx) rows per regimen drug by evidence level. Only the outlined columns are asserted; the rest are counted and carried no further."),
+        "ancestry_pca": fig(f"{S}.ancestry_pca.png",
+                            "Ancestry: this sample against 1000 Genomes superpopulations (somalier principal components)."),
+        "roh": fig(f"{S}.roh.png", "Runs of homozygosity by chromosome against the 1.5 Mb and 5 Mb reference thresholds."),
+        "qc_overview": fig(f"{S}.qc_overview.png",
+                           "Sequencing QC: depth distribution, per-chromosome mean depth (sex check) and insert size."),
+        "forcecall_depth": fig(f"{S}.forcecall_depth.png",
+                               "Read depth at every PharmCAT allele-definition position, stacked by genotype class."),
+        "mt_rnr1": fig(f"{S}.mt_rnr1.png",
+                       "MT-RNR1: alternate allele fraction at each CPIC allele against the heteroplasmy thresholds, with the two homoplasmic positive controls."),
+        "panel_exon_cn": fig(f"{S}.panel_exon_cn.png",
+                             "Exon-level copy number across the mechanistic panel with |z| >= 3 exons flagged."),
     },
+    "fig_manifest": jload(f"{S}.figures.json") or {},
+    # figure numbers in order of appearance in the templates; a figure that was not drawn takes no number
+    "fignum": {},
     "missing": missing,
 }
+FIGURE_ORDER = ["domains", "readthrough_products", "stage1b_levels", "pgx_concordance", "cyp2d6_depth", "genome", "perchrom", "burden",
+                "ancestry_pca", "roh", "qc_overview", "forcecall_depth", "mt_rnr1", "panel_exon_cn"]
+ctx["fignum"] = {k: n for n, k in enumerate([k for k in FIGURE_ORDER if ctx["figs"].get(k)], start=1)}
 
 
 def tex(s):
@@ -406,10 +465,118 @@ def db(name):
     return (prov.get("databases") or {}).get(name, "not recorded")
 
 
-ctx.update(tool=tool, db=db, params=prov.get("params", {}),
+# ---- literature citations (APA 7). Any rendered text may cite [@key] (parenthetical), [@+key] (narrative)
+# or [@-key] (bare, inside an existing parenthesis); structured literature cites by PMID. The References
+# section (rendered last) lists the entries used, alphabetically, in APA 7 form. Rendering runs once per
+# template and the used set is reset in between.
+LIT = {e["key"]: e for e in yaml.safe_load(open(os.path.join(a.templates, "literature.yml"))) or []}
+LIT_BY_PMID = {str(e["pmid"]): k for k, e in LIT.items() if e.get("pmid")}
+cite_used, cite_unknown = {}, []
+
+
+def _names(e):
+    return [x["family"] for x in e.get("authors") or []]
+
+
+def _who(e):
+    names = _names(e)
+    return names[0] if len(names) == 1 else (f"{names[0]} & {names[1]}" if len(names) == 2 else f"{names[0]} et al.")
+
+
+# APA 7: entries that would cite identically (same lead author form and year) take year suffixes a, b, ...
+# in title order; decided over the whole literature file so in-text citations are right before the
+# reference list is rendered
+_same = {}
+for _k, _e in LIT.items():
+    _same.setdefault((_who(_e), str(_e.get("year") or "n.d.")), []).append(_k)
+YEAR_SUFFIX = {k: (chr(97 + i) if len(ks) > 1 else "")
+               for ks in _same.values() for i, k in enumerate(sorted(ks, key=lambda k: LIT[k].get("title", "")))}
+
+
+def apa_year(e):
+    return str(e.get("year") or "n.d.") + YEAR_SUFFIX.get(e["key"], "")
+
+
+def apa_intext(e, form="paren"):
+    who, year = _who(e), apa_year(e)
+    return {"paren": f"({who}, {year})", "narrative": f"{who} ({year})", "bare": f"{who}, {year}"}[form]
+
+
+def cite_key(key, form="paren"):
+    if key not in LIT:
+        cite_unknown.append(key)
+        return f"[?{key}]"
+    cite_used[key] = True
+    return apa_intext(LIT[key], form)
+
+
+FORM = {"": "paren", "+": "narrative", "-": "bare"}
+
+
+def cite(text):
+    """Replace [@key] / [@+key] / [@-key], '(... PMID n)' and bare 'PMID n' with APA author-date citations."""
+    if text is None:
+        return ""
+    text = str(text)
+    text = re.sub(r"\[@([+-]?)([\w.-]+)\]", lambda m: cite_key(m.group(2), FORM[m.group(1)]), text)
+    text = re.sub(r"\(([^()]*?),?\s*PMID[: ]*(\d{6,9})\)",
+                  lambda m: cite_key(LIT_BY_PMID[m.group(2)]) if m.group(2) in LIT_BY_PMID else m.group(0), text)
+    return re.sub(r"PMID[: ]*(\d{6,9})",
+                  lambda m: cite_key(LIT_BY_PMID[m.group(1)]) if m.group(1) in LIT_BY_PMID else m.group(0), text)
+
+
+def cite_pmid(pmid, citation=None, bare=False):
+    """A structured literature entry: APA citation if its PMID is in literature.yml, else its own text."""
+    pmid = str(pmid or "").strip()
+    if pmid in LIT_BY_PMID:
+        return cite_key(LIT_BY_PMID[pmid], "bare" if bare else "paren")
+    if citation:
+        return citation if bare else f"({citation})"
+    return f"PMID {pmid}" if (pmid and bare) else (f"(PMID {pmid})" if pmid else "")
+
+
+def apa_authors(e):
+    au = e.get("authors") or []
+    fmt = lambda x: (x["family"] + (", " + x["initials"] if x.get("initials") else ""))
+    if not au:
+        return ""
+    if len(au) == 1:
+        return fmt(au[0])
+    if len(au) > 20:
+        return ", ".join(fmt(x) for x in au[:19]) + ", ... " + fmt(au[-1])
+    return ", ".join(fmt(x) for x in au[:-1]) + ", & " + fmt(au[-1])
+
+
+def apa_ref(e, style):
+    it = (lambda t: f"*{t}*") if style == "md" else (lambda t: "\\emph{" + tex(t) + "}")
+    esc = (lambda t: t) if style == "md" else tex
+    authors = apa_authors(e)
+    authors = esc(authors if authors.endswith(".") else authors + ".")   # a group author ends with its own period
+    year, title = esc(apa_year(e)), esc(e.get("title") or "")
+    if e.get("type") == "web":
+        link = e.get("url") or ""
+        return f"{authors} ({year}). {it(title)}. {esc(e.get('journal') or '')}. {esc(link)}"
+    src = esc(e.get("journal") or "")
+    if e.get("volume"):
+        src = it(f"{e['journal']}, {e['volume']}") + (f"({esc(str(e['issue']))})" if e.get("issue") else "")
+    if e.get("pages"):
+        src += f", {esc(str(e['pages']))}"
+    link = f" https://doi.org/{e['doi']}" if e.get("doi") else (f" {e['url']}" if e.get("url") else "")
+    return f"{authors} ({year}). {title}. {src}.{esc(link)}"
+
+
+def refs_used():
+    keys = sorted(cite_used, key=lambda k: ((_names(LIT[k]) or [""])[0].lower(), str(LIT[k].get("year")), LIT[k].get("title", "")))
+    return [{"key": k, "md": apa_ref(LIT[k], "md"), "tex": apa_ref(LIT[k], "tex")} for k in keys]
+
+
+ctx.update(tool=tool, db=db, params=prov.get("params", {}), cite=cite, cite_pmid=cite_pmid, refs_used=refs_used,
            references=[l.strip() for l in open(os.path.join(a.templates, "references.txt")) if l.strip()])
 env = Environment(loader=FileSystemLoader(a.templates), undefined=StrictUndefined, trim_blocks=True, lstrip_blocks=True)
-env.filters.update(tex=tex, fmt=fmt, pct=pct, mdcell=mdcell)
-open(a.out_md, "w").write(env.get_template("report.md.j2").render(**ctx))
-open(a.out_tex, "w").write(env.get_template("report.tex.j2").render(**ctx))
+env.filters.update(tex=tex, fmt=fmt, pct=pct, mdcell=mdcell, cite=cite)
+for tpl, out in (("report.md.j2", a.out_md), ("report.tex.j2", a.out_tex)):
+    cite_used.clear()
+    open(out, "w").write(env.get_template(tpl).render(**ctx))
+if cite_unknown:
+    print(json.dumps({"unknown_citation_keys": sorted(set(cite_unknown))}))
 print(json.dumps({"missing_inputs": missing, "actionable_recommendations": len(actionable)}))

@@ -22,6 +22,13 @@ A drug with no mechanism-of-action row in Open Targets cannot be tested by eithe
 'not assessable' and carried forward with that stated, because absence of a mechanism annotation is
 not evidence of safety.
 
+AXIS ROLES. An axis is `repurposing` (the default) or `regimen`. A regimen axis holds treatment the
+child is already receiving. The anti-target rules govern proposing NEW drugs for a mitotic-fidelity
+disorder; they are not applied to therapy given with curative intent and do not license withdrawing
+it (docs/08). So a regimen candidate is queried for its pharmacogenomic annotation whatever the rules
+say. The verdict is still computed and recorded for it, as a mechanistic note (it is the basis of the
+therapy-related-risk consideration), never as an exclusion.
+
 Usage: resolve_candidates.py --candidates drugs.yml --prefix out
 """
 import argparse
@@ -111,6 +118,17 @@ LIT_TARGETS = {t.upper(): r for r in LIT for t in r.get("targets") or []}
 # syndrome-level or purely mechanistic proposal is never presented as a patient-specific one
 SUPPORT = {"released_feature", "syndrome_only", "mechanism_only"}
 
+# axis roles: a `regimen` axis is treatment already given, queried regardless of the anti-target verdict
+ROLES = {"repurposing", "regimen"}
+AXES_SPEC = {str(k): (v or {}) for k, v in (spec.get("axes") or {}).items()}
+
+
+def axis_role(axis):
+    role = str(AXES_SPEC.get(str(axis), {}).get("role") or "repurposing")
+    if role not in ROLES:
+        raise SystemExit(f"axis {axis!r}: role must be one of {sorted(ROLES)}, got {role!r}")
+    return role
+
 go_cache = {}
 
 
@@ -148,7 +166,9 @@ for c in spec.get("candidates") or []:
     support = c.get("patient_support")
     if support not in SUPPORT:
         raise SystemExit(f"candidate {name!r}: patient_support must be one of {sorted(SUPPORT)}, got {support!r}")
-    row = {"name": name, "axis": c.get("axis"), "tier": c.get("tier"), "patient_support": support,
+    role = axis_role(c.get("axis"))
+    row = {"name": name, "axis": c.get("axis"), "role": role, "tier": c.get("tier"), "patient_support": support,
+           "caution": " ".join((c.get("caution") or "").split()),
            "chembl_id": (hit or {}).get("id"), "matched_name": (hit or {}).get("name"),
            "match_score": round((hit or {}).get("score", 0.0), 1) if hit else "",
            "status": status, "note": note,
@@ -194,11 +214,12 @@ for c in spec.get("candidates") or []:
         else:
             row["anti_target"] = "allowed"
             row["anti_target_reason"] = "no inhibitory mechanism against a mitotic-fidelity target"
-        candidates[hit["id"]] = {"name": name, "matched_name": hit["name"], "axis": c.get("axis"),
+        candidates[hit["id"]] = {"name": name, "matched_name": hit["name"], "axis": c.get("axis"), "role": role,
                                  "tier": c.get("tier"), "patient_support": support, "anti_target": row["anti_target"],
                                  "anti_target_reason": row["anti_target_reason"],
                                  "max_clinical_stage": row["max_clinical_stage"],
                                  "investigational": bool(c.get("investigational")),
+                                 "caution": " ".join((c.get("caution") or "").split()),
                                  "move_up": " ".join((c.get("move_up") or "").split())}
     resolved_rows.append(row)
 
@@ -215,15 +236,22 @@ def write_tsv(path, rows):
             w.writerow({k: ("" if r.get(k) is None else r.get(k)) for k in fields})
 
 
-# only resolved candidates that the anti-target rules did not exclude are queried in stage 1b;
-# every other candidate stays in the tables with its status
-queried = [r["chembl_id"] for r in resolved_rows if r["status"] == "resolved" and r["anti_target"] != "excluded"]
+# only resolved candidates that the anti-target rules did not exclude are queried in stage 1b; every
+# other candidate stays in the tables with its status. Regimen candidates are the exception: the rules
+# do not apply to treatment already given, so they are queried whatever the verdict
+queried = [r["chembl_id"] for r in resolved_rows
+           if r["status"] == "resolved" and (r["anti_target"] != "excluded" or r["role"] == "regimen")]
 open(a.prefix + ".query_ids.txt", "w").write("\n".join(dict.fromkeys(queried)) + ("\n" if queried else ""))
 write_tsv(a.prefix + ".resolved.tsv", resolved_rows)
 write_tsv(a.prefix + ".anti_target.tsv", anti_rows)
 
-axes = {str(k): {"title": v.get("title"), "rationale": " ".join((v.get("rationale") or "").split())}
-        for k, v in (spec.get("axes") or {}).items()}
+# `order` sets the sequence the report presents axes in: the mechanism-directed axes lead, because the
+# brief scores whether a candidate is supported by the variant mechanism, not merely by plausible biology
+axes = {str(k): {"title": v.get("title"), "role": axis_role(k), "order": v.get("order"),
+                 "rationale": " ".join((v.get("rationale") or "").split())}
+        for k, v in AXES_SPEC.items()}
+repurposing = [r for r in resolved_rows if r["role"] == "repurposing"]
+regimen = [r for r in resolved_rows if r["role"] == "regimen"]
 summary = {
     "drug_list": {"label": spec.get("drug_list_label"), "example": bool(spec.get("drug_list_example"))},
     "axes": axes,
@@ -232,16 +260,21 @@ summary = {
         "resolved": sum(1 for r in resolved_rows if r["status"] == "resolved"),
         "ambiguous": sum(1 for r in resolved_rows if r["status"] == "ambiguous"),
         "not_found": sum(1 for r in resolved_rows if r["status"] == "not_found"),
-        "excluded_by_anti_target": sum(1 for r in resolved_rows if r["anti_target"] == "excluded"),
+        "excluded_by_anti_target": sum(1 for r in repurposing if r["anti_target"] == "excluded"),
         "anti_target_not_assessable": sum(1 for r in resolved_rows if r["anti_target"] == "not assessable"),
         "queried_in_stage_1b": len(queried),
+        "regimen": len(regimen),
+        "regimen_anti_target_hits": sum(1 for r in regimen if r["anti_target"] == "excluded"),
     },
     "by_patient_support": {k: sorted(r["name"] for r in resolved_rows if r["patient_support"] == k)
                            for k in sorted(SUPPORT)},
     "unresolved": [{"name": r["name"], "status": r["status"], "note": r["note"]}
                    for r in resolved_rows if r["status"] != "resolved"],
     "excluded": [{"name": r["name"], "axis": r["axis"], "reason": r["anti_target_reason"]}
-                 for r in resolved_rows if r["anti_target"] == "excluded"],
+                 for r in repurposing if r["anti_target"] == "excluded"],
+    # regimen agents the rules would have matched: reported as a mechanistic note, and still queried
+    "regimen_anti_target": [{"name": r["name"], "axis": r["axis"], "reason": r["anti_target_reason"]}
+                            for r in regimen if r["anti_target"] == "excluded"],
     "anti_target_rules": {"go_terms": GO_TERMS, "inhibitory_action_types": sorted(INHIBITORY),
                           "literature": [{"targets": r["targets"], "pmid": r["pmid"], "citation": r["citation"]}
                                          for r in LIT]},

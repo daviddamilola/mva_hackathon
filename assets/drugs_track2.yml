@@ -1,0 +1,289 @@
+# Track 2 candidate list, version 2 (2026-10-10). Schema: assets/drugs_track2.template.yml.
+#
+# Two axes. The `regimen` axis is the standard rhabdomyosarcoma therapy (copied from
+# assets/drugs_regimen.yml, plus temozolomide, the relapse standard), queried for its pharmacogenomic
+# annotation regardless of the anti-target rule. Axis 1 proposes partners for irinotecan: drugs with
+# clinical or preclinical evidence of potentiating irinotecan in paediatric solid tumours, reviewed
+# as repurposing candidates for the malignancy this child has. The anti-target rule applies to them.
+#
+# What axis 1 is and is not. It acts on the child's tumour, not on the BUB1B mechanism of the
+# syndrome. The supplied rationale for several of these drugs referred to "BUB1-induced repair
+# defects" and "BUB1-deficient backgrounds": BUB1 and BUB1B are different kinases, and this child's
+# variants are in BUB1B (BubR1). No primary literature was found linking BUB1B deficiency to PARP or
+# ATR sensitivity, or linking statins to BubR1 or spindle function, so none of those claims is
+# carried here. What IS carried is the published evidence for each combination in paediatric
+# tumours, plus one finding that bears on this disease directly: in the paediatric olaparib +
+# irinotecan trial, activity was enriched among tumours with high aneuploidy scores.
+#
+# Every claim is cited and the tier reflects the evidence found, not the claim supplied.
+# Research hypotheses only; nothing here is a treatment recommendation.
+
+drug_list_label: track2_candidates_v2
+drug_list_example: false
+
+# Axes are ordered by `order`, lowest first: the two mechanism-directed axes lead, because the brief
+# scores "is the proposed drug repurposing candidate well-supported by that mechanism". The
+# tumour-directed axis treats the malignancy the syndrome produced and is supported by tumour biology
+# rather than by the BUB1B variant, so it follows them.
+axes:
+  readthrough:
+    title: Readthrough of the nonsense allele, with NMD inhibition
+    order: 1
+    rationale: >-
+      One allele is a nonsense variant. The pipeline characterises it rather than assuming it is
+      druggable: the stop codon is UGA, the most readthrough-permissive of the three and the one
+      ataluren was characterised against; the +4 base is A, which is the LEAST permissive position in
+      the C > U > G > A hierarchy [@mangkalaphiban2024], so the local context works against the
+      strategy even though the codon favours it. Near-cognate decoding at UGA inserts Trp, Arg or Cys
+      [@ng2021], so readthrough would not restore the reference leucine; it would produce one of three
+      specific full-length proteins. All three are predicted tolerated by AlphaMissense, and the
+      residue sits in the inter-domain linker rather than in a folded domain (figures and table in the
+      mechanism section). The PTC is NMD-sensitive, which is the reason to pair readthrough with NMD
+      inhibition rather than an argument against the axis: most of the transcript is degraded before
+      translation, so a readthrough agent acts on a depleted substrate. Whether a small percentage of
+      restored full-length protein crosses the phenotypic threshold is unknown and is not claimed; the
+      residual-function inference elsewhere in this report carries the conditional framing
+      [@simmons2019]. ELX-02 is the agent this field is moving toward but it is investigational and
+      therefore excluded from this list, which counts approved medicines only.
+  proteostasis:
+    title: Proteostasis support for the cost of aneuploidy
+    order: 2
+    rationale: >-
+      This axis acts on the consequence of BubR1 loss rather than on BubR1. Aneuploid cells carry
+      stoichiometric imbalances across multi-subunit complexes, which burdens the chaperone and
+      proteasome systems: aneuploid yeast show proteotoxic stress and sensitivity to proteasome and
+      HSP90 inhibition [@oromendia2012], and aneuploid human cells show impaired HSF1-dependent and
+      HSP90-dependent folding, with HSP90 support improving and HSP90 inhibition worsening their
+      proliferation [@donnelly2014]. That is the shared downstream state of a segregation defect
+      whatever the upstream module, which is also why pathway enrichment over the MVA gene set finds
+      nothing: the convergence is on the consequence, not on an annotated pathway. The hypothesis is
+      to reduce the cost of that state. It is not claimed that doing so corrects the phenotype, only
+      that it addresses a documented consequence of the mechanism, and there is no evidence in MVA or
+      in any aneuploidy syndrome and no biomarker of proteotoxic stress for this child.
+  regimen:
+    title: Standard rhabdomyosarcoma regimen
+    order: 4
+    role: regimen
+    rationale: >-
+      Standard rhabdomyosarcoma therapy is VAC (vincristine, actinomycin-D, cyclophosphamide), commonly
+      with ifosfamide, etoposide, irinotecan or doxorubicin, and platinum agents or methotrexate in
+      some protocols; for relapsed or refractory disease, vincristine-irinotecan-temozolomide (VIT)
+      improved response and survival over vincristine-irinotecan in a randomised European phase II
+      trial and is the relapse standard [@defachelles2021]. Rhabdomyosarcoma (HP:0002859) is a released feature of this child, so the context
+      is patient-supported; the specific protocol the child receives is not in the released record,
+      and this list is the standard regimen, not the child's chart. Rhabdomyosarcoma is among the
+      most frequent malignancies of MVA1 [@pavone2022], and two of the five original BUB1B families
+      had embryonal rhabdomyosarcoma [@hanks2004]. One case of rhabdomyosarcoma in the
+      premature-chromatid-separation / MVA syndrome was treated with reduced-intensity chemotherapy
+      [@nishitaniisa2019], which bears on any proposal to intensify therapy.
+  1:
+    title: Partners for irinotecan in this child's own tumour
+    order: 3
+    rationale: >-
+      Irinotecan is already part of standard rhabdomyosarcoma therapy, so the repurposing question is
+      which approved drugs potentiate it. This axis treats the malignancy the syndrome produced, not
+      the BUB1B mechanism of the syndrome. Two limits apply to every candidate. First, the BUB1B
+      variants are germline, so a mechanism that exploits BubR1 deficiency in tumour cells also
+      reaches every normal cell; a selective window cannot be assumed and is not claimed. Second,
+      the tumour's own genotype (fusion status, CDK4 copy number, homologous-recombination status,
+      aneuploidy score) is not in the released data, and several of these drugs depend on it. One
+      finding bears on this disease directly: in the paediatric phase I/II trial of olaparib with
+      irinotecan (AcSé-ESMART arm D), activity was enriched among tumours with high aneuploidy
+      scores [@acse2026]. That is an
+      observation about tumours, in a trial that did not include this syndrome, and it is the reason
+      the PARP-inhibitor candidates sit at tier 2 rather than tier 3.
+
+candidates:
+  # ---- axis: readthrough (approved medicines only; ELX-02 is investigational and is not listed)
+  - name: ataluren
+    axis: readthrough
+    tier: 2
+    patient_support: mechanism_only
+    caution: >-
+      Approval is narrower than it was. The European Commission did not renew the conditional
+      marketing authorisation in March 2025 because effectiveness was not confirmed
+      [@ema2025translarna]; the medicine remains authorised in Great Britain under the MHRA, and it
+      has never been approved in the United States. It is listed as approved on that basis, and the
+      efficacy controversy is part of the entry rather than a footnote to it.
+    move_up: >-
+      Evidence of readthrough at a UGA-A context specifically, since the +4 base here is the least
+      permissive in the hierarchy [@mangkalaphiban2024]; and any measurement, in patient-derived
+      cells, of full-length BubR1 restored. Ataluren acts by blocking termination rather than by
+      mischarging the ribosome, which is a mechanism distinct from the aminoglycosides [@ng2021].
+  - name: gentamicin
+    axis: readthrough
+    tier: 2
+    patient_support: mechanism_only
+    caution: >-
+      Two gates, and they point in different directions. The pharmacogenomic gate is OPEN: MT-RNR1
+      was genotyped from the CRAM at high depth across all CPIC alleles and is reference, so the
+      aminoglycoside contraindication for mitochondrial deafness does not apply (the verdict table
+      below shows the join). The phenotype gate is a caution: aminoglycoside nephrotoxicity is
+      dose-dependent regardless of MT-RNR1, and nephrocalcinosis is among this child's released
+      features, so renal risk is patient-specific here rather than generic.
+    move_up: >-
+      A readthrough measurement at this stop context, and a route of administration that reaches the
+      relevant tissue at a tolerable systemic dose. Aminoglycosides promote readthrough by a
+      mechanism orthogonal to ataluren's [@ng2021], so the two are not interchangeable evidence.
+  - name: amikacin
+    axis: readthrough
+    tier: 2
+    patient_support: mechanism_only
+    caution: >-
+      As gentamicin: MT-RNR1 reference, so the pharmacogenomic gate is open, while dose-dependent
+      nephrotoxicity against a background of nephrocalcinosis is a patient-specific caution.
+    move_up: As gentamicin.
+  - name: amlexanox
+    axis: readthrough
+    tier: 3
+    patient_support: mechanism_only
+    caution: >-
+      The only approved compound in this list with nonsense-mediated-decay-inhibition literature,
+      and that literature is thin: it stabilises PTC-containing transcripts and promotes readthrough
+      in recessive dystrophic epidermolysis bullosa cells [@atanasova2017] and in a Charcot-Marie-Tooth
+      neuronal model [@benslimane2023], with no data in any aneuploidy or checkpoint disorder. No NMD
+      inhibitor is approved; the tool compounds used in that field are not medicines.
+    move_up: >-
+      Evidence that NMD inhibition raises full-length BubR1 when combined with a readthrough agent,
+      in patient-derived cells; and clarity on whether a systemically adequate exposure is reachable,
+      given the approved formulation is topical.
+
+  # ---- axis: proteostasis
+  - name: arimoclomol
+    axis: proteostasis
+    tier: 3
+    patient_support: mechanism_only
+    caution: >-
+      Approved in 2024 for Niemann-Pick disease type C on a phase 2/3 trial [@mengel2021], a
+      lysosomal disorder. The proteostasis rationale transfers; the indication does not.
+    move_up: >-
+      A measured proteotoxic-stress signature in cells from this child, or evidence from an
+      aneuploidy model that amplifying the heat-shock response alters cell fitness. The supporting
+      work shows aneuploid cells depend on HSP90-dependent folding [@donnelly2014]; it does not show
+      that a heat-shock amplifier helps an organism carrying a germline segregation defect.
+  - name: glycerol phenylbutyrate
+    axis: proteostasis
+    tier: 3
+    patient_support: mechanism_only
+    caution: >-
+      Approved for urea cycle disorders. Phenylbutyrate has two activities, and only one is the
+      rationale here: it acts as a chemical chaperone, and it is also a histone deacetylase inhibitor
+      [@gore2000]. The second is a separate consideration in a cancer-predisposition syndrome and is
+      stated rather than set aside.
+    move_up: >-
+      The same biomarker evidence as arimoclomol, plus a reason to prefer the chaperone activity over
+      the transcriptional one in this context.
+
+  # ---- regimen (treatment already given; PGx lookup regardless of the anti-target verdict)
+  - {name: vincristine,      axis: regimen, patient_support: released_feature}
+  - {name: dactinomycin,     axis: regimen, patient_support: released_feature}
+  - {name: cyclophosphamide, axis: regimen, patient_support: released_feature}
+  - {name: ifosfamide,       axis: regimen, patient_support: released_feature}
+  - {name: etoposide,        axis: regimen, patient_support: released_feature}
+  - {name: irinotecan,       axis: regimen, patient_support: released_feature}
+  - {name: temozolomide,     axis: regimen, patient_support: released_feature}
+  - {name: doxorubicin,      axis: regimen, patient_support: released_feature}
+  - {name: cisplatin,        axis: regimen, patient_support: released_feature}
+  - {name: carboplatin,      axis: regimen, patient_support: released_feature}
+  - {name: methotrexate,     axis: regimen, patient_support: released_feature}
+
+  # ---- axis 1: irinotecan partners
+  - name: olaparib
+    axis: 1
+    tier: 3
+    patient_support: released_feature
+    caution: >-
+      Tier 3: in tension with the regimen-intensity finding in the section on what the mechanism
+      implies for the therapy already given, and not assessable without the tumour genotype.
+    move_up: >-
+      A tumour aneuploidy score or homologous-recombination status from the child's tumour, since
+      the trial's activity signal was enriched in high-aneuploidy tumours; and a confirmed
+      rhabdomyosarcoma response in the combination (the trial recorded one unconfirmed partial
+      response in rhabdomyosarcoma). Evidence: paediatric phase I/II of olaparib + irinotecan,
+      70 patients, RP2D olaparib 90 mg/m2 twice daily with irinotecan 20 mg/m2/day [@acse2026];
+      olaparib additive-to-synergistic with DNA-damaging chemotherapy including irinotecan in
+      paediatric solid-tumour models including rhabdomyosarcoma [@norris2014]; single-agent PARP
+      inhibition slows alveolar and embryonal rhabdomyosarcoma lines [@camero2019].
+  - name: niraparib
+    axis: 1
+    tier: 3
+    patient_support: released_feature
+    caution: >-
+      Tier 3: in tension with the regimen-intensity finding, and not assessable without the tumour
+      genotype.
+    move_up: >-
+      Any rhabdomyosarcoma data for niraparib. The rationale is PARP-class only: the paediatric
+      combination data are with dostarlimab [@gsk213406] and, within AcSé-ESMART, with irinotecan
+      in brain tumours; no rhabdomyosarcoma activity was found. Olaparib carries the class
+      evidence; niraparib is listed because it was proposed, and its tier says what was found.
+  - name: abemaciclib
+    axis: 1
+    tier: 3
+    patient_support: released_feature
+    caution: >-
+      Tier 3: in tension with the regimen-intensity finding, and not assessable without the tumour
+      genotype.
+    move_up: >-
+      This child's tumour histology and fusion status, and CDK4 expression: CDK4 phosphorylates and
+      activates PAX3-FOXO1 in alveolar rhabdomyosarcoma [@liu2013], and the
+      published durable response was in a PAX3-FOXO1-positive tumour. Evidence: paediatric phase 1b
+      of abemaciclib + irinotecan + temozolomide (JPCS Part A, NCT04238819), RP2D abemaciclib 55
+      mg/m2 twice daily, with one complete response and six stable diseases among patients at the
+      RP2D [@jpcs2025]; one case report of a complete response lasting 22.6 months in a child with
+      five-times-relapsed alveolar rhabdomyosarcoma [@jpcscase2025].
+      The supplied description "clinically proven durable complete responses in RMS" overstates
+      this: it is one phase 1b complete response and one case report.
+  - name: ceralasertib
+    axis: 1
+    tier: 3
+    patient_support: released_feature
+    investigational: true
+    caution: >-
+      Tier 3: in tension with the regimen-intensity finding, and not assessable without the tumour
+      genotype. Investigational, so it does not meet the brief's "approved medications" requirement.
+    move_up: >-
+      A paediatric dose of an ATR inhibitor with irinotecan, and evidence of replication stress or
+      ATM loss in the child's tumour. Evidence found: the ATR inhibitor berzosertib with irinotecan
+      reached a recommended phase 2 dose in adults, with activity concentrated in ATM-deficient
+      tumours [@villaruz2025]; ceralasertib's paediatric data are in combination with olaparib, not
+      irinotecan [@acseceralasertib2023]. No primary literature
+      was found that BUB1B deficiency creates an ATR dependence, so the supplied mechanism is not
+      carried.
+  - name: simvastatin
+    axis: 1
+    tier: 3
+    patient_support: released_feature
+    caution: >-
+      Tier 3: in tension with the regimen-intensity finding, and not assessable without the tumour
+      genotype.
+    move_up: >-
+      Any primary evidence that statin exposure alters BubR1 function, spindle dynamics in
+      BubR1-deficient cells, or rhabdomyosarcoma outcome; none was found for the supplied
+      "mevalonate / spindle function" mechanism. Kept so the record shows the claim was checked,
+      and because PharmCAT holds a CPIC simvastatin guideline (SLCO1B1), so the genotype join is
+      informative for a drug this child might plausibly receive for another reason.
+
+# Same rules as assets/drugs_regimen.yml.
+anti_target_rules:
+  go_terms:
+    GO:0007059: chromosome segregation
+    GO:0000070: mitotic sister chromatid segregation
+    GO:0000819: sister chromatid segregation
+    GO:0098813: nuclear chromosome segregation
+    GO:0007094: mitotic spindle assembly checkpoint signaling
+    GO:0007052: mitotic spindle organization
+  inhibitory_action_types:
+    - INHIBITOR
+    - ANTAGONIST
+    - BLOCKER
+    - DEGRADER
+    - DISRUPTING AGENT
+    - NEGATIVE ALLOSTERIC MODULATOR
+    - NEGATIVE MODULATOR
+  literature:
+    - targets: [MTOR, FKBP1A]
+      pmid: "35141499"
+      citation: Yamada C et al., iScience 2022;25:103675
+      statement: >-
+        mTORC1 inactivation induces mitotic slippage, overriding spindle assembly checkpoint
+        arrest, and causes chromosome instability; shown in budding yeast and human cells.

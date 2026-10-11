@@ -15,7 +15,12 @@
 #   drug_list_example must be false or absent for a real candidate set. When true, the report
 #                     labels the output as an example that checks the join logic.
 #   axes              rationale groups. The report presents candidates by axis, never as one
-#                     ranked list. Keys are referenced by each candidate's `axis`.
+#                     ranked list. Keys are referenced by each candidate's `axis`. An axis may
+#                     carry `role: regimen` (default `repurposing`): treatment the child is already
+#                     receiving. Its drugs need no tier, are queried for PGx annotation whatever the
+#                     anti-target rules say (the rules govern proposing new drugs, not withdrawing
+#                     curative therapy; docs/08), and are reported in their own block with any rule
+#                     match shown as a mechanistic note. See assets/drugs_regimen.yml.
 #   candidates        one entry per drug, BY NAME. Do not write ChEMBL IDs: RESOLVE_CANDIDATES
 #                     resolves every name through the Open Targets search API at run time, so the
 #                     IDs are reproducible against a stated release rather than pasted in. A name
@@ -27,7 +32,8 @@
 #                     name is ambiguous the candidate is reported as `ambiguous` with the competing
 #                     hits listed, and is not queried; disambiguate by using the exact OT name.
 #   axis              required. A key of `axes`.
-#   tier              required. Your confidence scale; the report prints it verbatim. The scheme
+#   tier              required on a repurposing axis (optional on a regimen axis). Your confidence
+#                     scale; the report prints it verbatim. The scheme
 #                     used in docs/08: 1 = mechanism- or phenotype-matched, approved drug, rationale
 #                     verified in primary literature; 2 = plausible from the syndrome literature,
 #                     not shown in this child; 3 = exploratory, investigational, or with unresolved
@@ -80,6 +86,11 @@ axes: {}
 #       <why, with PMIDs. State plainly whether the axis rests on a released feature or on the
 #       published series; never write that the child lacks a feature that is merely absent from
 #       the released set>
+#   regimen:
+#     title: Standard rhabdomyosarcoma regimen
+#     role: regimen            # treatment already given: queried regardless of the anti-target verdict
+#     rationale: >-
+#       <copy from assets/drugs_regimen.yml so one run covers both the regimen and the candidates>
 
 candidates: []
 

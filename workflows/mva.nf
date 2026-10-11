@@ -14,6 +14,7 @@ include { ANEUPLOIDY        } from '../subworkflows/local/aneuploidy'
 include { GENOME_QC         } from '../subworkflows/local/genome_qc'
 include { PROVENANCE        } from '../modules/local/provenance'
 include { REPORT            } from '../modules/local/report'
+include { REPORT_FIGURES    } from '../modules/local/report_figures'
 include { OT_QUERY as OT_LITERATURE   } from '../modules/local/ot_query'
 include { OT_QUERY as OT_TRACTABILITY } from '../modules/local/ot_query'
 
@@ -30,11 +31,20 @@ workflow MVA {
 
     def sample_meta = [ id: params.sample_id, sex: params.sample_sex ]
 
+    // duplicate-metrics file for QC. When the CRAM is supplied rather than produced here, the file the
+    // alignment step published is used, so skipping alignment does not silently drop the duplicate rate
+    ch_markdup = Channel.empty()
     if (params.cram) {
         // pre-existing CRAM (e.g. from an earlier run); VALIDATE_CRAM_REF still checks it
         ch_cram = Channel.of([ sample_meta,
                                file(params.cram, checkIfExists: true),
                                file(params.crai ?: "${params.cram}.crai", checkIfExists: true) ])
+        def md = file(params.markdup_stats ?: "${params.outdir}/alignment/${params.sample_id}.markdup.stats.txt")
+        if (md.exists()) {
+            ch_markdup = Channel.value(md)
+        } else if (!params.skip_qc) {
+            error "Supplying --cram needs the duplicate-metrics file for QC: expected ${md}, or pass --markdup_stats"
+        }
     } else if (!params.skip_alignment) {
         ch_lanes = Channel
             .fromPath(params.lanes, checkIfExists: true)
@@ -52,6 +62,7 @@ workflow MVA {
         )
         ch_versions = ch_versions.mix(ALIGN_LANES.out.versions)
         ch_cram = ALIGN_LANES.out.cram.map { meta, cram, crai -> [ sample_meta, cram, crai ] }
+        ch_markdup = ALIGN_LANES.out.markdup.first()
     } else {
         ch_cram = Channel.empty()
     }
@@ -77,12 +88,62 @@ workflow MVA {
     if (!params.skip_qc && !params.skip_aneuploidy) {
         GENOME_QC(
             PGX_CALL.out.valid_cram, ch_vcf_a, PREPARE_REFERENCE.out.fasta, PREPARE_REFERENCE.out.fai,
-            ALIGN_LANES.out.markdup.first(),
+            ch_markdup,
             ANEUPLOIDY.out.mosdepth_bins_summary.first(),
             ANEUPLOIDY.out.summary,
             Channel.empty()
         )
         ch_versions = ch_versions.mix(GENOME_QC.out.versions)
+    }
+
+    if (!params.skip_report && !params.skip_pgx && !params.skip_modifier_panel && !params.skip_aneuploidy && !params.skip_qc) {
+        // report inputs and figures first: their version records must be in software_versions.yml before PROVENANCE reads it
+        def stage1b = [ "pgx_ot.summary.json", "pgx_ot.verdicts.tsv", "pgx_ot.evidence_levels.tsv" ]
+            .collect { file("${params.outdir}/pgx/open_targets/${params.sample_id}.${it}") }.findAll { it.exists() }
+        // publication counts for the disease terms: a quantitative measure of unmet need
+        OT_LITERATURE(Channel.of([ 'literature', params.unmet_need_disease_ids ]))
+        // can the causal gene itself be drugged? the answer is the premise of the candidate list
+        OT_TRACTABILITY(Channel.of([ 'tractability', params.mechanism_gene ]))
+        ch_versions = ch_versions.mix(OT_LITERATURE.out.versions, OT_TRACTABILITY.out.versions)
+
+        ch_report_in = Channel.empty().mix(
+            PGX_CALL.out.calls.map { m, t, j -> [ t, j ] }.flatten(),
+            PGX_CALL.out.report.map { it[1] },
+            PGX_CALL.out.star_compare.map { it[1] },
+            PGX_CALL.out.hla_files,
+            PGX_CALL.out.forcecall_summary,
+            PGX_CALL.out.mt_rnr1,
+            PGX_CALL.out.counterfactual,
+            PGX_CALL.out.forcecall.map { m, vcf, csi -> vcf },
+            PGX_CALL.out.locus_depth.map { it[1] },
+            MODIFIER_PANEL.out.summary,
+            MODIFIER_PANEL.out.rare_functional.map { it[1] },
+            MODIFIER_PANEL.out.nmd,
+            MODIFIER_PANEL.out.domain_map,
+            MODIFIER_PANEL.out.domain_figure,
+            MODIFIER_PANEL.out.readthrough,
+            MODIFIER_PANEL.out.readthrough_tsv,
+            ANEUPLOIDY.out.summary.map { it[1] },
+            ANEUPLOIDY.out.arms_json,
+            ANEUPLOIDY.out.figures.flatten(),
+            ANEUPLOIDY.out.cnv_summary,
+            ANEUPLOIDY.out.cn_candidates,
+            ANEUPLOIDY.out.gene_cn.map { it[1] },
+            ANEUPLOIDY.out.bins,
+            ANEUPLOIDY.out.exon_cn,
+            GENOME_QC.out.qc_json.map { it[1] },
+            GENOME_QC.out.samtools_stats,
+            GENOME_QC.out.somalier_html,
+            GENOME_QC.out.roh_txt,
+            OT_LITERATURE.out.json.map { it[2] },
+            OT_TRACTABILITY.out.json.map { it[2] },
+            Channel.fromList(stage1b)
+        ).collect().map { files -> [ sample_meta, files ] }
+        // figures are drawn from the same staged inputs, then handed to the renderer alongside them
+        REPORT_FIGURES(ch_report_in, file("${projectDir}/assets/pgx_locus_genes.tsv", checkIfExists: true))
+        ch_report_all = ch_report_in.join(REPORT_FIGURES.out.figures.mix(REPORT_FIGURES.out.manifest.map { [ sample_meta, it ] }).groupTuple())
+            .map { meta, files, figs -> [ meta, files + figs.flatten() ] }
+        ch_versions = ch_versions.mix(REPORT_FIGURES.out.versions)
     }
 
     ch_sw_versions = ch_versions
@@ -117,39 +178,7 @@ workflow MVA {
         PROVENANCE(ch_sw_versions, ch_run_meta, PGX_CALL.out.report.map { it[1] },
                    ot_sum.exists() ? ot_sum : file("${projectDir}/assets/NO_OT_SUMMARY"))
 
-        def stage1b = [ "pgx_ot.summary.json", "pgx_ot.verdicts.tsv" ]
-            .collect { file("${params.outdir}/pgx/open_targets/${params.sample_id}.${it}") }.findAll { it.exists() }
-        // publication counts for the disease terms: a quantitative measure of unmet need
-        OT_LITERATURE(Channel.of([ 'literature', params.unmet_need_disease_ids ]))
-        // can the causal gene itself be drugged? the answer is the premise of the candidate list
-        OT_TRACTABILITY(Channel.of([ 'tractability', params.mechanism_gene ]))
-        ch_versions = ch_versions.mix(OT_LITERATURE.out.versions, OT_TRACTABILITY.out.versions)
-
-        ch_report_in = Channel.empty().mix(
-            PGX_CALL.out.calls.map { m, t, j -> [ t, j ] }.flatten(),
-            PGX_CALL.out.report.map { it[1] },
-            PGX_CALL.out.star_compare.map { it[1] },
-            PGX_CALL.out.hla_files,
-            PGX_CALL.out.forcecall_summary,
-            PGX_CALL.out.mt_rnr1,
-            PGX_CALL.out.counterfactual,
-            MODIFIER_PANEL.out.summary,
-            MODIFIER_PANEL.out.rare_functional.map { it[1] },
-            MODIFIER_PANEL.out.nmd,
-            MODIFIER_PANEL.out.domain_map,
-            MODIFIER_PANEL.out.domain_figure,
-            ANEUPLOIDY.out.summary.map { it[1] },
-            ANEUPLOIDY.out.arms_json,
-            ANEUPLOIDY.out.figures.flatten(),
-            ANEUPLOIDY.out.cnv_summary,
-            ANEUPLOIDY.out.cn_candidates,
-            ANEUPLOIDY.out.gene_cn.map { it[1] },
-            GENOME_QC.out.qc_json.map { it[1] },
-            OT_LITERATURE.out.json.map { it[2] },
-            OT_TRACTABILITY.out.json.map { it[2] },
-            Channel.fromList(stage1b)
-        ).collect().map { files -> [ sample_meta, files ] }
-        REPORT(ch_report_in, PROVENANCE.out.json, file("${projectDir}/assets/report", checkIfExists: true))
+        REPORT(ch_report_all, PROVENANCE.out.json, file("${projectDir}/assets/report", checkIfExists: true))
     }
 
     emit:

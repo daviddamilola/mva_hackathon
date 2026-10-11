@@ -32,7 +32,7 @@ contexts:
       the primary clinical context. Standard therapy is VAC (vincristine, actinomycin-D,
       cyclophosphamide), commonly with ifosfamide, etoposide, irinotecan or doxorubicin, plus
       radiotherapy. Malignancy occurs in 38.7% of published MVA1 cases, with rhabdomyosarcoma among
-      the most frequent. Two calls that carry no guideline flag become clinically pointed in this
+      the most frequent [@pavone2022]. Two calls that carry no guideline flag become clinically pointed in this
       regimen, and several reassuring calls are reportable findings in their own right.
     findings:
       - label: Vincristine neurotoxicity (CYP3A5, with CYP3A4)
@@ -144,8 +144,7 @@ contexts:
         response, whereas MVA1 is a spindle assembly checkpoint defect, so the analogy is not
         mechanistically direct. A literature search for clinical radiosensitivity in BUB1B-related
         MVA returned nothing. The only related reports are cancer cell-line studies in which BUB1B
-        knockdown reduced radioresistance (Luo X et al., Oncol Rep 2025, PMID 40910254, breast
-        cancer; Ma Q et al., Oncol Rep 2017, PMID 29039578, glioblastoma). Those concern tumour
+        knockdown reduced radioresistance (breast cancer, [@-luo2025]; glioblastoma, [@-ma2017]). Those concern tumour
         cells with the gene knocked down, not normal-tissue toxicity in a germline hypomorph, and
         cannot be transferred to this child. Whether BUB1B-MVA carries clinical radiosensitivity is
         unresolved, and it is a legitimate research question raised by this case.
@@ -220,8 +219,8 @@ contexts:
     title: Antiepileptic therapy — applicable only if seizures are present or emerge
     patient_support: syndrome_only
     why: >-
-      Epileptic seizures occur in 45.1% of published MVA1 cases, and refractory infantile spasms are
-      reported in MVA (Akasaka N et al., Pediatr Neurol 2013;49:364-7, PMID 23916859). Seizures are
+      Epileptic seizures occur in 45.1% of published MVA1 cases [@pavone2022], and refractory infantile spasms are
+      reported in MVA [@akasaka2013]. Seizures are
       NOT among the features released to participants. Under the epistemic rule that means they were
       not reported, which is not the same as being absent: they may be absent, may not have been
       assessed, or may simply not have been released. These genotypes are therefore presented as

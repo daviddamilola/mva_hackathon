@@ -63,6 +63,8 @@ workflow ANEUPLOIDY {
     arms_json = ANEUPLOIDY_MODEL.out.arms_json
     cnv_summary = GENE_CN.out.summary
     cn_candidates = CN_CANDIDATE_CHECK.out.json
+    bins     = ANEUPLOIDY_MODEL.out.bins        // per-bin depth, for the report's per-chromosome depth figure
+    exon_cn  = GENE_CN.out.exons
     mosdepth_bins_summary = MOSDEPTH_BINS.out.summary
     coverage = MOSDEPTH_BINS.out.summary
     versions = ch_versions

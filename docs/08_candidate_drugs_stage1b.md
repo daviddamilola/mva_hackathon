@@ -1,8 +1,12 @@
 # 08 — Stage 1b: candidate drugs, name resolution and the anti-target filter
 
-Status: **machinery implemented and tested** (2026-09-27); the candidate list itself is not in the
-repo yet. This document describes how a candidate list is consumed, how names become ChEMBL IDs, and
-how the anti-target rules exclude candidates. It records no genotypes.
+Status: **machinery implemented and tested** (2026-09-27); **regimen list run** (2026-10-06);
+**candidate list v2 run** (2026-10-10). `assets/drugs_track2.yml` is the Track 2 list the report is
+built from: two mechanism-directed axes (readthrough, proteostasis), the tumour-directed axis, and
+the regimen axis. `assets/drugs_regimen.yml` is the regimen axis alone and is kept
+for a run without proposals. This document describes how a candidate list is consumed, how names
+become ChEMBL IDs, how the anti-target rules exclude candidates, how a regimen axis differs, and
+what the first candidate axis rests on. It records no genotypes.
 
 ## The problem this stage answers
 
@@ -76,8 +80,35 @@ HPO set* is `syndrome_only`, never `released_feature`, because absence from that
 of absence in the child.
 
 `pgx_annotate.nf` refuses to start when `candidates` is empty, when a candidate lacks `name`, `axis`
-or `tier`, or when a candidate references an axis that is not defined; `resolve_candidates.py` fails
-on a missing or misspelt `patient_support`. Nothing is assumed.
+or `tier` (tier is optional only on a regimen axis), or when a candidate references an axis that is
+not defined; `resolve_candidates.py` fails on a missing or misspelt `patient_support`, and on an axis
+`role` it does not know. Nothing is assumed.
+
+### Axis roles: proposals versus treatment already given
+
+An axis carries `role: repurposing` (the default) or `role: regimen`. The distinction exists because
+the two kinds of drug need the join to run in opposite directions of trust:
+
+| | Repurposing axis | Regimen axis |
+|---|---|---|
+| What the drugs are | new proposals for this disorder | standard therapy the child is already receiving |
+| Anti-target rule | **excludes**; an excluded candidate is not queried | evaluated and reported as a **mechanistic note**; the drug is queried regardless |
+| Tier, `move_up` | required | not used (they are not proposals) |
+| Where the report shows them | by axis, grouped by `patient_support` | one block, "Treatment the child is already receiving" |
+| What a rule match means | the filter works | the basis of the therapy-related-risk consideration |
+
+The rule governs **proposing new drugs** for a mitotic-fidelity disorder. It is not applied to
+therapy given with curative intent, and it does not license withdrawing it (see the section on
+treatment the child is already receiving, below). Querying a regimen drug anyway is the whole point:
+its ClinPGx annotations, including positions outside the stage 1a panel, are what the report's
+"unannotated" line promises. The resolver records `role` on every row, counts `regimen` and
+`regimen_anti_target_hits` separately from `excluded_by_anti_target` (which counts repurposing
+candidates only), and lists regimen matches under `regimen_anti_target` rather than `excluded`. The
+join adds no "excluded" placeholder row for a regimen drug, because it has real rows.
+
+The regimen list is a stand-alone file today so it can run before the candidate set exists. When the
+Track 2 candidates are written, the `regimen` axis is copied into that file, so one run produces one
+report with both blocks and the report can never show one list's verdicts under another's label.
 
 ## Name resolution (`bin/resolve_candidates.py`)
 
@@ -137,12 +168,15 @@ Run against the live API (2026-09-27, Open Targets 26.09 / API 26.9.0):
 | tolvaptan | ANTAGONIST of AVPR2 | allowed |
 | (a nonsense string) | — | `not_found`, reported |
 
-`tests/unit/test_resolve_candidates.py` covers the rule logic offline from a fixture (11 tests). The
+`tests/unit/test_resolve_candidates.py` covers the rule logic offline from a fixture (13 tests). The
 cases that would otherwise fail silently: an **activator** of the same segregation gene is allowed
 (the rule is about inhibition, not about the target); a target caught only by the curated rule
 carries its PMID; a drug with no mechanism is `not assessable` rather than `allowed`; ambiguous and
-missing names are reported and not queried; and an empty `anti_target_rules` block excludes nothing
-rather than appearing to have filtered.
+missing names are reported and not queried; an empty `anti_target_rules` block excludes nothing
+rather than appearing to have filtered; a regimen-axis drug the rule matches is still queried, with
+the match recorded and counted apart from the exclusions; and an unknown axis role stops the run.
+`tests/unit/test_pgx_join.py` checks that a matched regimen drug keeps its real rows and gets no
+"excluded" placeholder, while a matched repurposing candidate still does.
 
 ## Outputs
 
@@ -152,17 +186,84 @@ results/pgx/open_targets/<sample>.track2.resolved.tsv     name, axis, tier, ChEM
                                                           anti-target verdict and reason
 results/pgx/open_targets/<sample>.track2.anti_target.tsv  one row per drug x mechanism target:
                                                           action type, rule matched, verdict, reason
-results/pgx/open_targets/<sample>.pgx_ot.verdicts.tsv     drug | axis | tier | patient_support |
+results/pgx/open_targets/<sample>.pgx_ot.verdicts.tsv     drug | axis | role | tier | patient_support |
                                                           gene | called | matched OT allele |
                                                           evidence level | flag | guideline text
-results/pgx/open_targets/<sample>.pgx_ot.summary.json     axes, counts, exclusions, unresolved,
+results/pgx/open_targets/<sample>.pgx_ot.summary.json     axes (with role), counts, exclusions,
+                                                          regimen_anti_target, unresolved,
                                                           join coverage, flag counts
 ```
 
-Only evidence levels 1A and 1B are asserted; level-3 rows are counted as exploratory and carried no
-further. The report groups axes by `patient_support` first, then renders one subsection per axis with its
+Only evidence levels 1A and 1B are asserted; rows at any other level are counted per drug, with the
+genes behind level-2 rows named in `evidence_levels.tsv` and the summary, and carried no further. The report groups axes by `patient_support` first, then renders one subsection per axis with its
 rationale, the per-candidate tier and `move_up`, and the verdict table; exclusions and unqueried
 candidates follow in their own blocks.
+
+## Only approved medicines count
+
+The brief asks for *existing, approved* medications. The candidate list therefore holds approved
+medicines only. An investigational agent may be named in an axis rationale where it is the direction
+the field is moving (ELX-02 on the readthrough axis, for instance), but it is not a candidate, is not
+counted, and does not appear in the verdict table. Where an approval is narrower than it looks, the
+candidate carries a `caution` field saying so rather than a bare "approved": ataluren's conditional
+EU authorisation was not renewed in March 2025 and it has never been FDA-approved, so it is listed as
+approved in Great Britain and the controversy is part of the entry.
+
+## The two mechanism-directed axes (candidate list v2, 2026-10-10)
+
+The brief's rigor criterion is conjunctive: the mechanism must be sound **and** the candidate must be
+supported by that mechanism. A candidate supported by tumour biology meets the first half only. The
+list is therefore ordered by an explicit `order` key on each axis, mechanism-directed first, and the
+report follows that order rather than sorting axes alphabetically or by support level.
+
+**Axis `readthrough` (order 1, tier 2).** One allele is a nonsense variant, and the pipeline
+characterises it rather than assuming it is druggable (doc 04). Two findings point in opposite
+directions and both are reported: the stop codon is UGA, the most permissive, while the +4 base is A,
+the least permissive in the published hierarchy. All three near-cognate products are predicted
+tolerated, and the residue sits in an inter-domain linker. The PTC is NMD-sensitive, which is the
+reason to pair readthrough with NMD inhibition rather than an argument against the axis. Candidates:
+ataluren, gentamicin, amikacin, amlexanox. The aminoglycosides carry two gates pointing different
+ways — the MT-RNR1 pharmacogenomic gate is open because the genotype is reference, while
+dose-dependent nephrotoxicity against a background of nephrocalcinosis is a patient-specific caution.
+
+**Axis `proteostasis` (order 2, tier 3).** Acts on the consequence of BubR1 loss rather than on
+BubR1: aneuploid cells carry stoichiometric imbalance that burdens chaperone and proteasome systems.
+This is also why pathway enrichment over the MVA gene set finds nothing — the convergence is on the
+consequence, not on an annotated pathway. Candidates: arimoclomol, glycerol phenylbutyrate. Tier 3,
+because there is no evidence in MVA or any aneuploidy syndrome and no biomarker in this child.
+
+**Axis 1, tumour-directed (order 3, all tier 3).** Demoted from tier 2. Two reasons, stated once in
+the axis rationale rather than five times in the candidates: every one of them is selected on a
+tumour genotype that germline sequencing cannot provide, and they propose intensifying a regimen the
+report separately argues may warrant caution in this genotype. They are kept, because a demoted
+candidate with its reason recorded is evidence the framework works.
+
+## Axis 1: partners for irinotecan (candidate list v1)
+
+The first proposed axis came from a supplied table of five drugs said to act synergistically with
+irinotecan. Each claim was checked against primary literature before being written into the list,
+and the tiers record what was found rather than what was claimed:
+
+| Candidate | Claim supplied | What was found | Tier |
+|---|---|---|---|
+| olaparib | exploits "BUB1-induced repair defects" | No BUB1B-PARP literature. A paediatric phase I/II of olaparib + irinotecan (AcSé-ESMART arm D, 70 patients) defined a dose and found activity enriched in high-aneuploidy tumours; additive-to-synergistic with irinotecan in paediatric models including rhabdomyosarcoma | 2 |
+| niraparib | as olaparib | PARP-class rationale only; no rhabdomyosarcoma data | 3 |
+| abemaciclib | "clinically proven durable complete responses in RMS" with irinotecan/temozolomide | A paediatric phase 1b (JPCS Part A) with one complete response at the recommended dose, and one case report of a 22.6-month complete response in alveolar rhabdomyosarcoma. Real, but one phase 1b response and one case, not "clinically proven" | 2 |
+| ceralasertib | strips "BUB1-deficient" cells of a backup checkpoint | No BUB1B-ATR literature. Adult phase 1 of an ATR inhibitor + irinotecan with activity in ATM-deficient tumours; ceralasertib's paediatric data are with olaparib, not irinotecan | 3, investigational |
+| simvastatin | "distorts spindle dynamics in BUB1-deficient backgrounds" | Nothing found. Kept so the record shows the claim was checked, and because the SLCO1B1 join is informative | 3 |
+
+Two corrections applied to the supplied rationale. The table referred to BUB1; this child's gene is
+BUB1B, a different kinase, and no finding about one transfers to the other without evidence. And
+every mechanism of the form "exploit the deficiency in tumour cells" meets the fact that the
+variants are germline: whatever the drug does to BubR1-deficient tumour cells it does to every
+other cell, so no selective window is claimed. The axis therefore stands on the published
+combination evidence in paediatric tumours and on one observation that bears on this disease
+directly, the aneuploidy enrichment in the olaparib trial. It treats the malignancy, not the
+syndrome, and says so.
+
+All five passed the anti-target rule (none has an inhibitory mechanism against a mitotic-fidelity
+target). None has a ClinPGx annotation at an asserted level except simvastatin, whose SLCO1B1 rows
+matched the PharmCAT call with no flag.
 
 ## The anti-target rule and treatment the child is already receiving
 
@@ -186,10 +287,18 @@ surveillance, not as a protocol change.
 ## Running it
 
 ```sh
+# the regimen list that is in the repo
+CONDA_SUBDIR=osx-arm64 nextflow -log results/nextflow_stage1b.log run pgx_annotate.nf \
+    -profile conda,macos_docker --drug_list_file assets/drugs_regimen.yml -ansi-log false
+
+# the Track 2 candidate set, once written (copy the regimen axis into it)
 cp assets/drugs_track2.template.yml assets/drugs_track2.yml   # then fill in axes and candidates
-CONDA_SUBDIR=osx-arm64 nextflow run pgx_annotate.nf -profile conda,macos_docker \
-    --drug_list_file assets/drugs_track2.yml
+CONDA_SUBDIR=osx-arm64 nextflow -log results/nextflow_stage1b.log run pgx_annotate.nf \
+    -profile conda,macos_docker --drug_list_file assets/drugs_track2.yml -ansi-log false
 ```
+
+Use a separate `-log` file so the stage 1b session does not sit in the main pipeline's log, and
+resume the main pipeline afterwards with its own session ID, never a bare `-resume`.
 
 Stage 1a is not re-run. The main pipeline's REPORT step then picks the stage 1b output up by file
 name on its next run.
