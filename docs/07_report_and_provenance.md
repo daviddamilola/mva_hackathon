@@ -41,6 +41,35 @@ Provenance → References → Acknowledgement.
   paragraph is added with it. One trap: the templates render with `trim_blocks`, so a line ending
   in a block tag swallows the newline after it and merges the next paragraph into itself. Lines
   that end a paragraph with `{% endif %}` close with `{{ '' }}` to keep the break.
+- **Tables carry values; quoted text is keyed.** The stage 1b verdict tables hold the genotype and
+  the join result. A guideline paragraph longer than `NOTE_INLINE_MAX` moves out of the cell to a
+  note quoted once below the table and keyed a, b, c; a short basis ("no PGx rows in Open Targets")
+  stays in the cell. Three defects drove this: the embedded paragraphs made cells four lines deep,
+  the columns overran the text width and ran together, and the same paragraph was printed once per
+  allele tested.
+  - `collapse_rows` merges a drug's rows that differ only in the allele tested, the evidence level
+    or the annotation category, listing the alleles and levels in one cell. It is display only: the
+    verdicts TSV keeps every raw row, and the test pins that no allele, level or matched allele is
+    lost.
+  - A note records any *other* drug that PharmCAT's own text names. PharmCAT holds DPWG's
+    atorvastatin wording under simvastatin too, and printing that unremarked reads as a join error,
+    so the note says the text is quoted as PharmCAT holds it.
+- **A LaTeX table cannot overrun the margin.** Column widths are fractions of `\linewidth` through
+  the `L{}` column type and sum to 1, instead of fixed centimetres that summed past the text width.
+  `L{}` uses `ragged2e`'s `\RaggedRight`, which keeps hyphenation active, so a long single word
+  (drug name, gene symbol) breaks instead of standing past the column edge. The `tex` filter inserts
+  break points after `_ & / . : ;` and inside any run of 16 or more characters, because an md5, an
+  accession or a URL otherwise has none. `placeins` puts a float barrier at each section, so a
+  figure can no longer land inside Limitations and split a sentence across pages.
+- **One section hierarchy.** The LaTeX report numbers its own sections (Results is 3, the mechanism
+  subsections 3.1.1 and 3.1.2, the clinical contexts 3.4.1 onward). Cross-references go through
+  `\label`/`\ref`, never hand-written numbers, which previously disagreed with the headings they
+  pointed at. The Markdown report carries the same hierarchy: `report.md.j2` sets a `sec` map of
+  section numbers once and both its headings and its cross-references read from it, so the two
+  formats number the same section the same way and a reference cannot drift from its heading.
+- **The feature-absence rule is named once.** `methods.j2` states it and names it; the results and
+  limitations cite it by name. It was previously restated nearly verbatim three times, which invites
+  skimming over a rule that is load-bearing.
 - **Citations follow APA 7.** Literature lives in `assets/report/literature.yml` as structured
   entries (authors, year, sentence-case title, journal, volume, issue, pages, DOI or URL),
   generated from NCBI E-utilities and Crossref records rather than transcribed. Any rendered text

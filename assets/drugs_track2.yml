@@ -100,11 +100,11 @@ candidates:
     tier: 2
     patient_support: mechanism_only
     caution: >-
-      Approval is narrower than it was. The European Commission did not renew the conditional
-      marketing authorisation in March 2025 because effectiveness was not confirmed
-      [@ema2025translarna]; the medicine remains authorised in Great Britain under the MHRA, and it
-      has never been approved in the United States. It is listed as approved on that basis, and the
-      efficacy controversy is part of the entry rather than a footnote to it.
+      Regulatory status differs by jurisdiction. EU: the conditional marketing authorisation was
+      NOT renewed in March 2025, after effectiveness was not confirmed [@ema2025translarna]. Great
+      Britain: still authorised, under the MHRA. United States: never approved. It therefore
+      qualifies for this approved-medicines list only through the Great Britain authorisation, and
+      the unresolved efficacy question belongs to the entry itself.
     move_up: >-
       Evidence of readthrough at a UGA-A context specifically, since the +4 base here is the least
       permissive in the hierarchy [@mangkalaphiban2024]; and any measurement, in patient-derived
@@ -168,8 +168,8 @@ candidates:
     caution: >-
       Approved for urea cycle disorders. Phenylbutyrate has two activities, and only one is the
       rationale here: it acts as a chemical chaperone, and it is also a histone deacetylase inhibitor
-      [@gore2000]. The second is a separate consideration in a cancer-predisposition syndrome and is
-      stated rather than set aside.
+      [@gore2000]. That second activity is a separate consideration in a cancer-predisposition
+      syndrome, and it is noted here.
     move_up: >-
       The same biomarker evidence as arimoclomol, plus a reason to prefer the chaperone activity over
       the transcriptional one in this context.
