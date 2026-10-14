@@ -1049,3 +1049,75 @@
   title: 'Translarna (ataluren): European public assessment report; conditional marketing authorisation not renewed'
   journal: European Medicines Agency
   url: https://www.ema.europa.eu/en/medicines/human/EPAR/translarna
+- key: sandoval1998
+  type: article
+  authors:
+  - family: Sandoval
+    initials: C.
+  - family: Swift
+    initials: M.
+  year: 1998
+  title: Treatment of lymphoid malignancies in patients with ataxia-telangiectasia
+  journal: Medical and Pediatric Oncology
+  volume: '31'
+  issue: '6'
+  pages: 491-497
+  doi: 10.1002/(sici)1096-911x(199812)31:6<491::aid-mpo5>3.0.co;2-b
+  pmid: '9835901'
+- key: bienemann2011
+  type: article
+  authors:
+  - family: Bienemann
+    initials: K.
+  - family: Burkhardt
+    initials: B.
+  - family: Modlich
+    initials: S.
+  - family: Meyer
+    initials: U.
+  - family: "Möricke"
+    initials: A.
+  - family: Bienemann
+    initials: K.
+  - family: "Mauz-Körholz"
+    initials: C.
+  - family: Escherich
+    initials: G.
+  - family: Zimmermann
+    initials: M.
+  - family: "Körholz"
+    initials: D.
+  - family: Janka-Schaub
+    initials: G.
+  - family: Schrappe
+    initials: M.
+  - family: Reiter
+    initials: A.
+  - family: Borkhardt
+    initials: A.
+  year: 2011
+  title: 'Promising therapy results for lymphoid malignancies in children with chromosomal breakage syndromes (Ataxia
+    teleangiectasia or Nijmegen-breakage syndrome): a retrospective survey'
+  journal: British Journal of Haematology
+  volume: '155'
+  issue: '4'
+  pages: 468-476
+  doi: 10.1111/j.1365-2141.2011.08863.x
+  pmid: '21923652'
+- key: gluckman1983
+  type: article
+  authors:
+  - family: Gluckman
+    initials: E.
+  - family: Devergie
+    initials: A.
+  - family: Dutreix
+    initials: J.
+  year: 1983
+  title: 'Radiosensitivity in Fanconi anaemia: application to the conditioning regimen for bone marrow transplantation'
+  journal: British Journal of Haematology
+  volume: '54'
+  issue: '3'
+  pages: 431-440
+  doi: 10.1111/j.1365-2141.1983.tb02117.x
+  pmid: '6344915'
