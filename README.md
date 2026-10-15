@@ -36,6 +36,7 @@ its task hash, so a changed script re-runs rather than silently reusing a cached
 | [docs/07_report_and_provenance.md](docs/07_report_and_provenance.md) | how the report, its figures and its citations are built |
 | [docs/08_candidate_drugs_stage1b.md](docs/08_candidate_drugs_stage1b.md) | section 3: the candidate axes and the anti-target rule |
 | [docs/09_clinical_features_and_inference.md](docs/09_clinical_features_and_inference.md) | the epistemic rule governing every phenotype claim |
+| [docs/10_methods_description_track2.md](docs/10_methods_description_track2.md) | paste-ready answers for the submission's methods-description form |
 
 ## Data handling
 
