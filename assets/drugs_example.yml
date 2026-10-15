@@ -1,0 +1,9 @@
+# EXAMPLE ONLY - exercises the stage 1b join logic; this is NOT the Track 2 candidate set.
+# Replace with the candidate drugs (ChEMBL IDs) and run:
+#   CONDA_SUBDIR=osx-arm64 nextflow run pgx_annotate.nf -profile conda -params-file <your_drugs.yml>
+drug_list_label: example_join_check
+drug_list_example: true
+drugs:
+  - CHEMBL185       # fluorouracil: DPYD level 1A, rsID-keyed rows
+  - CHEMBL1425      # mercaptopurine anhydrous: no PGx rows itself -> resolves to child CHEMBL1200751
+  - CHEMBL1200751   # mercaptopurine: TPMT/NUDT15 star-allele rows, MED4 rsID rows

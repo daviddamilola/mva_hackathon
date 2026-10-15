@@ -1,0 +1,3 @@
+gene	chrom	start	end	source
+CYP2D6	22	42126498	42130881	PyPGx 0.27.0 gene-table.csv, GRCh38
+CYP2D7	22	42139575	42144483	PyPGx 0.27.0 gene-table.csv, GRCh38

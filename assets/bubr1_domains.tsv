@@ -1,0 +1,10 @@
+# BubR1 (BUB1B, UniProt O60566, 1050 aa) domain organisation.
+# Reference: Pavone P et al., Neurol Sci 2022;43:6529-38. PMID 35804254.
+# Source: PMID 35804254, their Figure 3
+# The first three domains interact with the kinetochore; the kinase domain regulates the spindle
+# assembly checkpoint.
+protein	length	domain	start	end	role
+BubR1	1050	BUB1 N-terminal	62	226	kinetochore
+BubR1	1050	BUB3 binding	382	420	kinetochore
+BubR1	1050	CDC20 binding	525	690	kinetochore
+BubR1	1050	Serine/threonine kinase	766	1050	spindle assembly checkpoint

@@ -1,0 +1,8 @@
+name: delly
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - bioconda::delly=2.6.0
+  - bioconda::bcftools=1.24
+  - bioconda::htslib=1.24

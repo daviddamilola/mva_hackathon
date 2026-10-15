@@ -1,0 +1,10 @@
+name: pharmcat
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - bioconda::pharmcat3=3.4.0
+  - bioconda::bcftools=1.22
+  - bioconda::htslib=1.22.1
+  - conda-forge::openjdk=25.0.2
+  - conda-forge::python=3.13.15

@@ -1,0 +1,8 @@
+name: gnomad_panel
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - bioconda::bcftools=1.22
+  - bioconda::htslib=1.22.1
+  - conda-forge::python=3.12.11

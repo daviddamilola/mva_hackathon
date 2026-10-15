@@ -1,0 +1,20 @@
+name: aldy
+channels:
+  - conda-forge
+dependencies:
+  - conda-forge::python=3.12.11
+  - conda-forge::pip=26.2.1
+  - pip:
+      - aldy==4.8.3
+      - ortools==9.15.6755
+      - pysam==0.24.1
+      - mappy==2.31
+      - numpy==2.5.3
+      - natsort==8.4.0
+      - Logbook==1.10.1
+      - PyYAML==6.0.3
+      - Cython==3.3.0
+      - importlib_resources==7.1.0
+      - protobuf==6.33.6
+      - immutabledict==4.3.1
+      - pandas==3.0.6

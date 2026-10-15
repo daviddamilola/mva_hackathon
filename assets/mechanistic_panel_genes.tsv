@@ -1,0 +1,33 @@
+group	symbol	ensembl_id
+mva_disease	BUB1B	ENSG00000156970
+mva_disease	CEP57	ENSG00000166037
+mva_disease	TRIP13	ENSG00000071539
+mva_disease	CENATAC	ENSG00000186166
+mva_disease	MAD1L1	ENSG00000002822
+mva_disease	SLF2	ENSG00000119906
+mva_disease	SMC5	ENSG00000198887
+checkpoint_rebalance	MAD2L1BP	ENSG00000124688
+checkpoint_rebalance	CDC20	ENSG00000117399
+checkpoint_rebalance	BUB1	ENSG00000169679
+checkpoint_rebalance	BUB3	
+checkpoint_rebalance	MAD2L1	
+apc_c	ANAPC1	
+apc_c	ANAPC2	
+apc_c	ANAPC4	
+apc_c	ANAPC5	
+apc_c	ANAPC7	
+apc_c	ANAPC10	
+apc_c	ANAPC11	
+apc_c	ANAPC13	
+apc_c	ANAPC15	
+apc_c	ANAPC16	
+apc_c	CDC16	
+apc_c	CDC23	
+apc_c	CDC27	
+apc_c	FZR1	
+error_correction_cohesion	PPP2R5A	
+error_correction_cohesion	PPP2R5C	
+error_correction_cohesion	PPP2CA	
+error_correction_cohesion	SGO1	
+error_correction_cohesion	ESPL1	
+error_correction_cohesion	PTTG1	

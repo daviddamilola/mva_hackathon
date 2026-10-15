@@ -1,0 +1,17 @@
+# GRC exclusion regions hard-masked in the reference the subject VCF was called against
+# (GCA_000001405.15_..._maskedGRC_exclusions_v2_no_chr). Derived from NCBI
+# GCA_000001405.15_GRCh38_GRC_exclusions.bed (chr prefix stripped), keeping only regions with
+# zero calls in the subject VCF. Dropped: 13:111753855-111793441 and 16:34339329-34521510
+# (calls present -> not masked in v2); 10_KI270825v1_alt (not in the no_alt set).
+# See docs/00_data_inspection.md and docs/01_reference_and_alignment.md.
+Un_KI270752v1	0	27745	contamination
+21	5010000	5166246	false_duplication
+21	5966593	6161371	false_duplication
+21	6427258	6580181	false_duplication
+21	6789085	6934219	false_duplication
+21	7743700	7865746	false_duplication
+11_KI270721v1_random	0	100316	false_duplication
+X	37085008	37099262	false_duplication
+9	70701801	70719794	false_duplication
+13	86252979	86269524	false_duplication
+22_KI270734v1_random	0	165050	false_duplication

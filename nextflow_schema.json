@@ -1,0 +1,622 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/davidoluwasusi/mva-track2/nextflow_schema.json",
+    "title": "mva-track2 pipeline parameters",
+    "description": "Pharmacogenomics, modifier genotypes, mosaic aneuploidy burden and genome QC for one MVA proband (MVA Hackathon 2026, Track 2)",
+    "type": "object",
+    "$defs": {
+        "input_options": {
+            "title": "Input options",
+            "type": "object",
+            "required": [
+                "sample_id",
+                "vcf",
+                "lanes",
+                "hf_repo"
+            ],
+            "properties": {
+                "sample_id": {
+                    "type": "string",
+                    "default": "WGS_EX2312012",
+                    "description": "Sample ID; must match the VCF sample column."
+                },
+                "vcf": {
+                    "type": "string",
+                    "format": "file-path",
+                    "default": "${projectDir}/data/WGS_EX2312012_HGWCNDSX7.vcf.gz",
+                    "description": "Single-sample VCF (downloaded with hf download, never read from the NFS mount)."
+                },
+                "lanes": {
+                    "type": "string",
+                    "format": "file-path",
+                    "default": "${projectDir}/assets/lanes.csv",
+                    "description": "CSV of FASTQ lanes on Hugging Face with upstream sha256 (columns: lane,flowcell,sample_index,r1,r1_sha256,r2,r2_sha256)."
+                },
+                "hf_repo": {
+                    "type": "string",
+                    "default": "SageBio/mva-hackathon-2026-data",
+                    "description": "Hugging Face repo holding the FASTQ."
+                },
+                "hf_repo_type": {
+                    "type": "string",
+                    "default": "dataset",
+                    "enum": [
+                        "dataset",
+                        "model",
+                        "space"
+                    ]
+                },
+                "cram": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "format": "file-path",
+                    "description": "Existing CRAM; otherwise produced by the alignment branch. Always validated against the reference (M5) first."
+                },
+                "crai": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "format": "file-path"
+                },
+                "sample_sex": {
+                    "type": "string",
+                    "enum": [
+                        "M",
+                        "F"
+                    ],
+                    "default": "M",
+                    "description": "Sets chrX ploidy for force-calling (XY inferred in docs/00)."
+                }
+            }
+        },
+        "reference_options": {
+            "title": "Reference options",
+            "type": "object",
+            "properties": {
+                "genome": {
+                    "type": "string",
+                    "default": "GRCh38",
+                    "enum": [
+                        "GRCh38"
+                    ],
+                    "description": "Reference build. Only GRCh38 is supported (verified from the VCF header)."
+                },
+                "ref_name": {
+                    "type": "string",
+                    "default": "GCA_000001405.15_GRCh38_no_alt_plus_hs38d1_analysis_set_maskedGRC_exclusions_v2_no_chr"
+                },
+                "ref_fasta_url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "NCBI analysis-set FASTA (gzipped)."
+                },
+                "ref_fasta_md5": {
+                    "type": "string",
+                    "pattern": "^[0-9a-f]{32}$",
+                    "default": "a056c57649f3c9964c68aead3849bbf8"
+                },
+                "ref_mask_bed": {
+                    "type": "string",
+                    "format": "file-path",
+                    "description": "Regions hard-masked to reproduce the maskedGRC_exclusions_v2 reference."
+                },
+                "reference_dir": {
+                    "type": "string",
+                    "format": "directory-path",
+                    "default": "${projectDir}/refs",
+                    "description": "Where the prepared FASTA, indexes and bwa index are published."
+                }
+            }
+        },
+        "alignment_options": {
+            "title": "Alignment options",
+            "type": "object",
+            "properties": {
+                "skip_alignment": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Skip FASTQ re-alignment (only VCF-based analyses will run)."
+                },
+                "max_parallel_lanes": {
+                    "type": "integer",
+                    "default": 1,
+                    "minimum": 1,
+                    "description": "Lanes processed at once. Each needs ~21 GB of FASTQ plus sort temp space."
+                },
+                "optical_dup_distance": {
+                    "type": "integer",
+                    "default": 2500,
+                    "description": "samtools markdup -d (2500 for patterned flowcells)."
+                }
+            }
+        },
+        "analysis_options": {
+            "title": "Analysis options",
+            "type": "object",
+            "properties": {
+                "gene_panel_bed": {
+                    "type": "string",
+                    "format": "file-path",
+                    "description": "Mechanistic modifier panel (GRCh38, +/-10 kb)."
+                },
+                "bin_size": {
+                    "type": "integer",
+                    "default": 100000,
+                    "minimum": 1000,
+                    "description": "Coverage bin size in bp for aneuploidy analysis."
+                }
+            }
+        },
+        "output_options": {
+            "title": "Output options",
+            "type": "object",
+            "properties": {
+                "outdir": {
+                    "type": "string",
+                    "format": "directory-path",
+                    "default": "${projectDir}/results",
+                    "description": "Output directory (gitignored: contains subject-derived data)."
+                },
+                "publish_dir_mode": {
+                    "type": "string",
+                    "default": "link",
+                    "enum": [
+                        "symlink",
+                        "rellink",
+                        "link",
+                        "copy",
+                        "copyNoFollow",
+                        "move"
+                    ]
+                }
+            }
+        },
+        "resource_options": {
+            "title": "Max resources",
+            "type": "object",
+            "properties": {
+                "max_cpus": {
+                    "type": "integer",
+                    "default": 8
+                },
+                "max_memory": {
+                    "type": "string",
+                    "default": "14.GB",
+                    "pattern": "^\\d+(\\.\\d+)?\\.?\\s*(K|M|G|T)?B$"
+                },
+                "max_time": {
+                    "type": "string",
+                    "default": "48.h",
+                    "pattern": "^(\\d+\\.?\\s*(s|m|h|d|day)\\s*)+$"
+                }
+            }
+        },
+        "pgx_options": {
+            "title": "Pharmacogenomics",
+            "type": "object",
+            "properties": {
+                "skip_pgx": {
+                    "type": "boolean",
+                    "default": false
+                },
+                "aldy_genes": {
+                    "type": "string",
+                    "description": "Comma-separated genes for Aldy."
+                },
+                "aldy_profile": {
+                    "type": "string",
+                    "default": "wgs"
+                },
+                "pgx_genes": {
+                    "type": "string",
+                    "description": "Genes reported in the reconciliation table."
+                },
+                "pgx_outside_call_genes": {
+                    "type": "string",
+                    "default": "CYP2D6",
+                    "description": "Aldy calls passed to PharmCAT as outside calls."
+                },
+                "pharmcat_reporter_sources": {
+                    "type": "string",
+                    "default": "CPIC,DPWG,FDA"
+                },
+                "max_parallel_aldy": {
+                    "type": "integer",
+                    "default": 3,
+                    "minimum": 1
+                },
+                "drugs": {
+                    "type": [
+                        "array",
+                        "string",
+                        "null"
+                    ],
+                    "items": {
+                        "type": "string",
+                        "pattern": "^CHEMBL\\d+$"
+                    },
+                    "description": "Stage 1b (pgx_annotate.nf): candidate drugs as ChEMBL IDs."
+                },
+                "pgx_calls_json": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "format": "file-path"
+                },
+                "pharmcat_report": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "format": "file-path"
+                },
+                "pgx_forcecall_vcf": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "format": "file-path"
+                },
+                "ot_assert_levels": {
+                    "type": "string",
+                    "default": "1A,1B",
+                    "description": "Open Targets evidence levels that contribute to verdicts; level 3 is counted as exploratory."
+                },
+                "ot_include_direct_targets": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Include rows where the gene is the drug's target (excluded by default: metaboliser panel)."
+                },
+                "skip_pypgx": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Skip the pypgx branch"
+                },
+                "pypgx_genes": {
+                    "type": "string",
+                    "default": "CYP2D6,CYP2C19,CYP2C9,CYP2B6,CYP3A5,CYP4F2,TPMT,NUDT15,DPYD,UGT1A1,SLCO1B1,G6PD,VKORC1,ABCG2,RYR1,CACNA1S,IFNL3",
+                    "description": "pypgx genes"
+                },
+                "pypgx_control_gene": {
+                    "type": "string",
+                    "default": "VDR",
+                    "description": "pypgx control gene"
+                },
+                "pypgx_bundle_version": {
+                    "type": "string",
+                    "default": "0.27.0",
+                    "description": "pypgx bundle version"
+                },
+                "pypgx_bundle_sha256": {
+                    "type": "string",
+                    "default": "a0ebcdf3f90264f3b6dc743ddd77e557c9aa305bb7636aa81464db0787bef8c6",
+                    "description": "pypgx bundle sha256"
+                },
+                "max_parallel_pypgx": {
+                    "type": "integer",
+                    "default": 3,
+                    "description": "HLA typing (T1K + OptiType); concordant 2-field HLA-A/B -> PharmCAT outside calls"
+                },
+                "drug_list_label": {
+                    "type": "string",
+                    "description": "Required by pgx_annotate.nf: name of the candidate drug list, recorded in the stage-1b summary and report"
+                },
+                "drug_list_example": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "true only for assets/drugs_example.yml; the report labels such output as an example"
+                }
+            }
+        },
+        "hla_options": {
+            "title": "HLA typing",
+            "type": "object",
+            "properties": {
+                "skip_hla": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Skip the hla branch"
+                },
+                "hla_region": {
+                    "type": "string",
+                    "default": "6:28510120-33480577",
+                    "description": "GRCh38 MHC"
+                },
+                "hla_pharmcat_genes": {
+                    "type": "string",
+                    "default": "HLA-A,HLA-B",
+                    "description": "hla pharmcat genes"
+                },
+                "imgt_hla_version": {
+                    "type": "string",
+                    "default": "3.65.0",
+                    "description": "imgt hla version"
+                },
+                "imgt_hla_dat_url": {
+                    "type": "string",
+                    "default": "https",
+                    "description": "github.com/ANHIG/IMGTHLA/raw/5b915f27f7f620361cf83cb626eeac8a03c0247c/hla.dat.zip'"
+                },
+                "imgt_hla_dat_sha256": {
+                    "type": "string",
+                    "default": "01aa70fed700cd3dc6e59a800ee2479582d0ac35e5e27df39b5db42ae54a1668",
+                    "description": "Pharmacogenomics, stage 1b (pgx_annotate.nf)"
+                }
+            }
+        },
+        "modifier_panel_options": {
+            "title": "Modifier panel",
+            "type": "object",
+            "properties": {
+                "skip_modifier_panel": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Skip the modifier panel branch"
+                },
+                "vcf_tbi": {
+                    "type": "string",
+                    "description": "vcf tbi"
+                },
+                "vep_cache_dir": {
+                    "type": "string",
+                    "description": "vep cache dir"
+                },
+                "vep_cache_version": {
+                    "type": "integer",
+                    "default": 116,
+                    "description": "vep cache version"
+                },
+                "gnomad_version": {
+                    "type": "string",
+                    "default": "4.1",
+                    "description": "gnomad version"
+                },
+                "gnomad_base_url": {
+                    "type": "string",
+                    "default": "https",
+                    "description": "storage.googleapis.com/gcp-public-data--gnomad/release/4.1/vcf/joint'"
+                },
+                "gnomad_fields": {
+                    "type": "string",
+                    "default": "AF_joint,AC_joint,AN_joint,nhomalt_joint,AF_grpmax_joint,grpmax_joint,fafmax_faf95_max_joint,AF_joint_afr,AF_joint_amr,AF_joint_asj,AF_joint_eas,AF_joint_fin,AF_joint_mid,AF_joint_nfe,AF_joint_sas,AF_joint_remaining,exomes_filters,genomes_filters",
+                    "description": "gnomad fields"
+                },
+                "clinvar_release": {
+                    "type": "string",
+                    "default": "20260923",
+                    "description": "clinvar release"
+                },
+                "alphamissense_url": {
+                    "type": "string",
+                    "default": "https",
+                    "description": "storage.googleapis.com/dm_alphamissense/AlphaMissense_hg38.tsv.gz'"
+                },
+                "alphamissense_md5_b64": {
+                    "type": "string",
+                    "default": "n9Fnc18Wobh9pus+TCX8tQ==",
+                    "description": "alphamissense md5 b64"
+                },
+                "spliceai_annotation": {
+                    "type": "string",
+                    "description": "bin/make_spliceai_annotation.py"
+                },
+                "spliceai_distance": {
+                    "type": "integer",
+                    "default": 50,
+                    "description": "spliceai distance"
+                },
+                "spliceai_mask": {
+                    "type": "integer",
+                    "default": 1,
+                    "description": "spliceai mask"
+                },
+                "spliceai_min_delta": {
+                    "type": "number",
+                    "default": 0.2,
+                    "description": "spliceai min delta"
+                },
+                "panel_max_af": {
+                    "type": "number",
+                    "default": 0.01,
+                    "description": "Analysis 3: mosaic aneuploidy burden + panel CNV/SV"
+                }
+            }
+        },
+        "aneuploidy_options": {
+            "title": "Aneuploidy and panel CNV/SV",
+            "type": "object",
+            "properties": {
+                "skip_aneuploidy": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Skip the aneuploidy branch"
+                },
+                "mosdepth_mapq": {
+                    "type": "integer",
+                    "default": 20,
+                    "description": "mosdepth mapq"
+                },
+                "aneuploidy_min_map": {
+                    "type": "number",
+                    "default": 0.9,
+                    "description": "aneuploidy min map"
+                },
+                "delly_min_mapq": {
+                    "type": "integer",
+                    "default": 20,
+                    "description": "delly min mapq"
+                },
+                "umap_url": {
+                    "type": "string",
+                    "default": "https",
+                    "description": "bismap.hoffmanlab.org/raw/hg38/k100.umap.bed.gz'   // longest k published; conservative for 150 bp reads"
+                },
+                "umap_sha256": {
+                    "type": "string",
+                    "default": "063c02b0d50334b43f358688b0573a2961480ddc697b13603674620a60b15fd0",
+                    "description": "umap sha256"
+                },
+                "blacklist_url": {
+                    "type": "string",
+                    "default": "https",
+                    "description": "raw.githubusercontent.com/Boyle-Lab/Blacklist/d0527cdea356bf57d30535b48783804ca8d21031/lists/hg38-blacklist.v2.bed.gz'"
+                },
+                "blacklist_sha256": {
+                    "type": "string",
+                    "default": "c92e763af17271446194991e71917ac220593a5a3d40a06667be24178ef08cf2",
+                    "description": "blacklist sha256"
+                },
+                "cytoband_url": {
+                    "type": "string",
+                    "default": "https",
+                    "description": "hgdownload.soe.ucsc.edu/goldenPath/hg38/database/cytoBand.txt.gz'"
+                },
+                "cytoband_sha256": {
+                    "type": "string",
+                    "default": "e514e48b0a12a516fd5231b44241a20a282f290bdd6131cadcddc6276ee26082",
+                    "description": "cytoband sha256"
+                },
+                "delly_exclude_url": {
+                    "type": "string",
+                    "default": "https",
+                    "description": "raw.githubusercontent.com/dellytools/delly/72a05f3cd23bf55f1edd723b9504a0faf1fba230/excludeTemplates/human.hg38.excl.tsv'"
+                },
+                "delly_exclude_sha256": {
+                    "type": "string",
+                    "default": "caef8593f82f513694ae41b429680eab8abe39c057a119dae7760715aef006ee",
+                    "description": "delly exclude sha256"
+                },
+                "segdup_url": {
+                    "type": "string",
+                    "default": "https",
+                    "description": "hgdownload.soe.ucsc.edu/goldenPath/hg38/database/genomicSuperDups.txt.gz'"
+                },
+                "segdup_sha256": {
+                    "type": "string",
+                    "default": "3f4388ed3eb7462034e89c1f45314160bdb14558502092326063105c095061df",
+                    "description": "Analysis 4: genome QC + report"
+                }
+            }
+        },
+        "qc_report_options": {
+            "title": "Genome QC and report",
+            "type": "object",
+            "properties": {
+                "skip_qc": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Skip the qc branch"
+                },
+                "skip_report": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Skip the report branch"
+                },
+                "somalier_sites_url": {
+                    "type": "string",
+                    "default": "https",
+                    "description": "github.com/brentp/somalier/files/3412456/sites.hg38.vcf.gz'"
+                },
+                "somalier_sites_sha256": {
+                    "type": "string",
+                    "default": "d1a853b8bb2e5f1a520bc67c8303be699543d225d785bce51e8335a2420489b5",
+                    "description": "somalier sites sha256"
+                },
+                "somalier_1kg_url": {
+                    "type": "string",
+                    "default": "https",
+                    "description": "zenodo.org/record/3479773/files/1kg.somalier.tar.gz'"
+                },
+                "somalier_1kg_sha256": {
+                    "type": "string",
+                    "default": "b2b7959cfd6d37d1ac7a96e03aeb13707cfe84e5c3a208329220712a935c5a1e",
+                    "description": "somalier 1kg sha256"
+                },
+                "somalier_labels_url": {
+                    "type": "string",
+                    "default": "https",
+                    "description": "raw.githubusercontent.com/brentp/somalier/d9dfab190bdb20a6d35be0a77395efd9fb372a77/scripts/ancestry-labels-1kg.tsv'"
+                },
+                "somalier_labels_sha256": {
+                    "type": "string",
+                    "default": "ef198b72cde1258a2df484e8fb9234b1a0727ad85d09413ed0775ccd078b4fd8",
+                    "description": "somalier labels sha256"
+                },
+                "verifybamid2_resource": {
+                    "type": "string",
+                    "default": "1000g.phase3.100k.b38",
+                    "description": "Output"
+                }
+            }
+        },
+        "mt_rnr1_options": {
+            "title": "MT-RNR1 (aminoglycosides)",
+            "type": "object",
+            "properties": {
+                "mt_contig": {
+                    "type": "string",
+                    "default": "M",
+                    "description": "Mitochondrial contig name in the reference (rCRS numbering)"
+                },
+                "mt_rnr1_start": {
+                    "type": "integer",
+                    "default": 648,
+                    "description": "MT-RNR1 start (rCRS)"
+                },
+                "mt_rnr1_end": {
+                    "type": "integer",
+                    "default": 1601,
+                    "description": "MT-RNR1 end (rCRS)"
+                },
+                "mt_rnr1_cpic_alleles": {
+                    "type": "string",
+                    "format": "file-path",
+                    "default": "${projectDir}/assets/mt_rnr1_cpic_alleles.tsv",
+                    "description": "CPIC MT-RNR1 allele table (snapshot of the CPIC API, sha256 in the header)"
+                }
+            }
+        }
+    },
+    "allOf": [
+        {
+            "$ref": "#/$defs/input_options"
+        },
+        {
+            "$ref": "#/$defs/reference_options"
+        },
+        {
+            "$ref": "#/$defs/alignment_options"
+        },
+        {
+            "$ref": "#/$defs/analysis_options"
+        },
+        {
+            "$ref": "#/$defs/pgx_options"
+        },
+        {
+            "$ref": "#/$defs/output_options"
+        },
+        {
+            "$ref": "#/$defs/resource_options"
+        },
+        {
+            "$ref": "#/$defs/hla_options"
+        },
+        {
+            "$ref": "#/$defs/modifier_panel_options"
+        },
+        {
+            "$ref": "#/$defs/aneuploidy_options"
+        },
+        {
+            "$ref": "#/$defs/qc_report_options"
+        },
+        {
+            "$ref": "#/$defs/mt_rnr1_options"
+        }
+    ]
+}

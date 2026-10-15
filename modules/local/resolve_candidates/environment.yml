@@ -1,0 +1,7 @@
+name: resolve_candidates
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - conda-forge::python=3.12.11
+  - conda-forge::pyyaml=6.0.2

@@ -1,0 +1,253 @@
+# Pharmacogenomic results grouped by the clinical contexts this child actually faces, ordered by
+# how well each is supported by evidence about this child.
+#
+# EPISTEMIC RULE (load-bearing; see docs/09). The eight HPO terms released to hackathon participants
+# are the features made available, NOT the complete clinical picture. A feature's presence is
+# evidence it is present. A feature's ABSENCE from that set is NOT evidence it is absent: it may be
+# absent, may not have been assessed, or may simply not have been released. Nothing in this file may
+# say the child lacks a feature. Where an inference depends on a feature being genuinely absent, it
+# is written as conditional and says so.
+#
+# patient_support:
+#   released_feature  supported by the released HPO set
+#   syndrome_only     supported by the published MVA1 series but not by the released features
+#   mechanism_only    derived from the genotype alone
+#
+# Genotype-dependent interpretation is never written here: what the report prints for a genotype is
+# PharmCAT's own CPIC/DPWG/FDA annotation. This file supplies grouping, rationale, and curated
+# literature that is explicitly labelled as literature rather than guideline.
+#
+# A normal or negative genotype in a drug class this child will actually encounter is a reportable
+# finding: each 'findings' entry becomes its own row, flagged or not.
+#
+# Population frequencies quoted below: Pavone P et al., Neurol Sci 2022;43:6529-38 (PRISMA review,
+# 31 MVA1 cases). They contextualise; they never assert a feature in this child.
+
+contexts:
+  - id: rhabdomyosarcoma
+    title: Rhabdomyosarcoma chemotherapy
+    patient_support: released_feature
+    why: >-
+      Rhabdomyosarcoma (HP:0002859) is the released feature that triggered investigation, making this
+      the primary clinical context. Standard therapy is VAC (vincristine, actinomycin-D,
+      cyclophosphamide), commonly with ifosfamide, etoposide, irinotecan or doxorubicin, plus
+      radiotherapy. Malignancy occurs in 38.7% of published MVA1 cases, with rhabdomyosarcoma among
+      the most frequent [@pavone2022]. Two calls that carry no guideline flag become clinically pointed in this
+      regimen, and several reassuring calls are reportable findings in their own right.
+    findings:
+      - label: Vincristine neurotoxicity (CYP3A5, with CYP3A4)
+        genes: [CYP3A5, CYP3A4]
+        drugs: [tacrolimus]
+        note: >-
+          Vincristine is the V in VAC. PharmCAT carries no vincristine annotation, so no vincristine
+          guideline row appears below; the tacrolimus annotation is shown only because it is what
+          PharmCAT holds for this gene. The vincristine relevance rests on the literature cited
+          here, not on a CPIC or DPWG guideline. CYP3A4 is shown alongside CYP3A5 because
+          vincristine is metabolised by both; the cited association is with CYP3A5 expression
+          status, and CYP3A4 is reported here as context rather than as a second risk signal.
+        literature:
+          - statement: >-
+              Low CYP3A5 expression genotype was associated with increased vincristine-induced
+              peripheral neuropathy in children with acute lymphoblastic leukaemia.
+            citation: Egbelakin A et al., Pediatr Blood Cancer 2011
+            pmid: "21225912"
+          - statement: >-
+              CYP3A5 genotype affected vincristine pharmacokinetics and the development of
+              neuropathy in Kenyan children with cancer.
+            citation: Skiles JL et al., Pediatr Blood Cancer 2018
+            pmid: "29115708"
+          - statement: >-
+              A CYP3A5 non-expresser genotype is the higher-risk genotype in these reports.
+              This is a consideration for neuropathy monitoring and for
+              dose decisions made by the treating team, not a recommendation to change the protocol.
+            citation: interpretation of the two reports above
+            pmid: ""
+      - label: Cyclophosphamide and ifosfamide bioactivation (CYP2B6)
+        genes: [CYP2B6]
+        drugs: [cyclophosphamide, ifosfamide]
+        note: >-
+          Cyclophosphamide and ifosfamide are prodrugs requiring CYP2B6-mediated 4-hydroxylation.
+          Reduced activity therefore raises an EFFICACY question (less active metabolite formed),
+          not the toxicity question that reduced metabolism usually implies. That direction is the
+          opposite of the familiar reading. PharmCAT holds no CPIC or
+          DPWG recommendation for either drug, so this is a mechanistic consideration rather than a
+          guideline finding, and its clinical significance in this regimen is not established.
+      - label: Irinotecan (UGT1A1)
+        genes: [UGT1A1]
+        drugs: [irinotecan]
+      - label: Methotrexate transport (SLCO1B1)
+        genes: [SLCO1B1]
+        drugs: [methotrexate]
+      - label: Thiopurines (TPMT, NUDT15)
+        genes: [TPMT, NUDT15]
+        drugs: [mercaptopurine, thioguanine, azathioprine]
+      - label: Fluoropyrimidines (DPYD)
+        genes: [DPYD]
+        drugs: [fluorouracil, capecitabine]
+        note: >-
+          A DPYD variant being present is not the same as reduced DPD activity: the allele function
+          shown is CPIC's, and the activity score is computed from it.
+    unannotated_drugs: [vincristine, cyclophosphamide, ifosfamide, dactinomycin, doxorubicin, etoposide, cisplatin, carboplatin, methotrexate]
+    unannotated_note: >-
+      Standard rhabdomyosarcoma agents with no CPIC, DPWG or FDA annotation in PharmCAT for this
+      child's genotypes. Their Open Targets (ClinPGx) annotations are looked up separately in stage
+      1b.
+    panel_gap:
+      note: >-
+        Genes bearing on this regimen that lie outside the pharmacogene panel and so carry no call
+        in this report. They were scoped out, not unmeasured: the sequencing is whole-genome and
+        covers them at full depth. A negative result elsewhere in this report says nothing about
+        them, but neither does their absence here imply risk — they were simply not analysed.
+        Stage 1b force-calls any ClinPGx-annotated position for a candidate drug regardless of
+        panel membership, so it closes part of this gap when it runs.
+      genes:
+        ABCB1: transport of vincristine, actinomycin-D and etoposide
+        RARG: anthracycline cardiotoxicity
+        SLC28A3: anthracycline cardiotoxicity
+        UGT1A6: anthracycline cardiotoxicity
+        CBR3: anthracycline cardiotoxicity
+        MTHFR: methotrexate
+        GSTA1: cyclophosphamide
+        ALDH1A1: cyclophosphamide
+        ACYP2: platinum ototoxicity
+        COMT: platinum ototoxicity
+
+  - id: therapy_related_risk
+    title: Therapy-related risk in a chromosomal instability syndrome
+    patient_support: released_feature
+    why: >-
+      This is a chromosomal instability and cancer-predisposition syndrome, and the child is
+      receiving cytotoxic therapy. The interaction between the two bears on treatment the child is
+      actually having, which is why it is reported here rather than among candidate drugs.
+    narrative:
+      - >-
+        Alkylating agents (cyclophosphamide, ifosfamide) and topoisomerase II poisons (doxorubicin,
+        etoposide) are the established causes of therapy-related myeloid neoplasia. TOP2A also sits
+        in BUB1B's interaction neighbourhood and is caught by this pipeline's own anti-target rule.
+        Together these support an elevated plausible risk of therapy-related secondary malignancy,
+        bearing on cumulative-dose decisions and on long-term haematological surveillance.
+      - >-
+        This is not a reason to alter a rhabdomyosarcoma protocol, and this analysis could not
+        support one. It is a risk consideration for the treating team, weighed against a therapy
+        given with curative intent for a malignant tumour.
+      - >-
+        The tension with the anti-target rule is real. The
+        rule that excludes topoisomerase II poisons and other mitotic-fidelity inhibitors from the
+        candidate list governs the proposal of NEW drugs for a mitotic-fidelity disorder. It does
+        not license withdrawing established therapy, and the pipeline does not apply it to treatment
+        the child is already receiving.
+      - >-
+        Radiotherapy is an open question, not a finding. Other chromosomal instability syndromes
+        (ataxia telangiectasia, Nijmegen breakage syndrome) have documented clinical
+        radiosensitivity and protocol modification, but their defects lie in the DNA damage
+        response, whereas MVA1 is a spindle assembly checkpoint defect, so the analogy is not
+        mechanistically direct. A literature search for clinical radiosensitivity in BUB1B-related
+        MVA returned nothing. The only related reports are cancer cell-line studies in which BUB1B
+        knockdown reduced radioresistance (breast cancer, [@-luo2025]; glioblastoma, [@-ma2017]). Those concern tumour
+        cells with the gene knocked down, not normal-tissue toxicity in a germline hypomorph, and
+        cannot be transferred to this child. Whether BUB1B-MVA carries clinical radiosensitivity is
+        unresolved, and it is a legitimate research question raised by this case.
+
+  - id: anaesthesia
+    title: Anaesthesia and procedural sedation
+    patient_support: released_feature
+    why: >-
+      A child receiving oncological treatment has repeated anaesthesia for imaging, biopsies, line
+      placement and possibly surgery, so this context follows from the released oncology feature
+      rather than from the syndrome literature.
+    findings:
+      - label: Volatile anaesthetics and succinylcholine (RYR1, CACNA1S)
+        genes: [RYR1, CACNA1S]
+        drugs: [sevoflurane, desflurane, isoflurane, succinylcholine]
+        note: >-
+          CPIC assigns "Uncertain Susceptibility" to every RYR1/CACNA1S genotype carrying no
+          malignant hyperthermia-causative variant, reference included: sequencing cannot exclude
+          susceptibility, so this phenotype is the absence of a genetic signal, not a signal. FDA
+          label text for these agents concerns known or suspected susceptibility. Anaesthetic
+          decisions rest on clinical and family history. RYR1 and CACNA1S are also on the ACMG
+          secondary-findings list; they are reported here only as pharmacogenes, under CPIC's
+          malignant hyperthermia susceptibility classification, and no secondary-findings screen
+          was performed.
+      - label: Perioperative opioids (CYP2D6)
+        genes: [CYP2D6]
+        drugs: [codeine, tramadol]
+        note: >-
+          Codeine and tramadol are restricted in children independently of genotype. The genotype is
+          reported for completeness; it is not the operative consideration.
+      - label: Perioperative NSAIDs (CYP2C9)
+        genes: [CYP2C9]
+        drugs: [ibuprofen, celecoxib]
+
+  - id: supportive
+    title: Supportive care during myelosuppressive therapy
+    patient_support: released_feature
+    why: >-
+      Myelosuppression, febrile neutropenia, nausea and mucositis are expected consequences of the
+      regimen above, so the drugs used to manage them are drugs this child will meet.
+    findings:
+      - label: Aminoglycosides in febrile neutropenia (MT-RNR1)
+        genes: [MT-RNR1]
+        drugs: [amikacin, gentamicin, tobramycin]
+        note: >-
+          Aminoglycosides are standard in febrile neutropenia and are also Axis 1 readthrough
+          candidates, so this genotype gates both a supportive-care decision and a Track 2
+          candidate.
+      - label: Antiemetics (CYP2D6)
+        genes: [CYP2D6]
+        drugs: [ondansetron, tropisetron]
+      - label: Antifungal prophylaxis (CYP2C19)
+        genes: [CYP2C19]
+        drugs: [voriconazole]
+      - label: Co-trimoxazole prophylaxis (G6PD, NAT2)
+        genes: [G6PD, NAT2]
+        drugs: [sulfamethoxazole / trimethoprim]
+        note: >-
+          Co-trimoxazole is standard Pneumocystis prophylaxis during myelosuppressive therapy, so
+          this is a drug this child is likely to receive. NAT2 governs acetylation of the
+          sulfamethoxazole component; the FDA annotation below is keyed to it. NAT2 was called by
+          PharmCAT from the start but was absent from this report's gene list until 2026-10-02, so
+          earlier versions showed only the G6PD row for this drug.
+      - label: Rasburicase and oxidant drugs (G6PD)
+        genes: [G6PD]
+        drugs: [rasburicase]
+      - label: Proton-pump inhibitors (CYP2C19)
+        genes: [CYP2C19]
+        drugs: [omeprazole, lansoprazole, pantoprazole, esomeprazole]
+
+  - id: conditional_antiepileptic
+    title: Antiepileptic therapy — applicable only if seizures are present or emerge
+    patient_support: syndrome_only
+    why: >-
+      Epileptic seizures occur in 45.1% of published MVA1 cases [@pavone2022], and refractory infantile spasms are
+      reported in MVA [@akasaka2013]. Seizures are
+      not among the features released to participants, so under the feature-absence rule they are
+      unknown here rather than absent. These genotypes are therefore presented as contingency,
+      applicable if seizures are present or emerge. No claim is made either way about whether this
+      child has seizures.
+    findings:
+      - label: Carbamazepine and oxcarbazepine severe cutaneous reactions (HLA-B*15:02, HLA-A*31:01)
+        genes: [HLA-B, HLA-A]
+        drugs: [carbamazepine, oxcarbazepine]
+      - label: Phenytoin and fosphenytoin (CYP2C9, HLA-B*15:02)
+        genes: [CYP2C9, HLA-B]
+        drugs: [phenytoin, fosphenytoin]
+      - label: Lamotrigine (HLA-B*15:02)
+        genes: [HLA-B]
+        drugs: [lamotrigine]
+      - label: Clobazam and brivaracetam (CYP2C19)
+        genes: [CYP2C19]
+        drugs: [clobazam, brivaracetam]
+        note: >-
+          The FDA Table of Pharmacogenetic Associations text quoted below is worded for poor
+          metabolizers; PharmCAT attaches the association to intermediate metabolizers as well.
+          PharmCAT carries no CPIC or DPWG recommendation for either drug.
+      - label: Diazepam (CYP2C19)
+        genes: [CYP2C19]
+        drugs: [diazepam]
+    unannotated_drugs: [valproic acid, vigabatrin, levetiracetam, cannabidiol, topiramate, prednisolone]
+    unannotated_note: >-
+      Agents used for infantile spasms and in the published MVA index cases, with no CPIC, DPWG or
+      FDA annotation in PharmCAT. Valproate's FDA label concerns POLG, which this pipeline does not
+      genotype. Vigabatrin causes irreversible retinal toxicity and ocular anomalies occur in 19.3%
+      of MVA1 cases, so ophthalmic assessment before and during any vigabatrin course is a
+      syndrome-specific conditional consideration.

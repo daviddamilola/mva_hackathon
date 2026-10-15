@@ -1,0 +1,1123 @@
+# Literature cited in the report (APA 7). Cite in rendered text with [@key] for a parenthetical
+# citation, [@+key] for a narrative one ("Author et al. (Year)") and [@-key] for the bare form inside
+# an existing parenthesis. Structured literature entries (clinical_contexts.yml, anti-target rules)
+# are matched by PMID. Entries were generated from NCBI E-utilities and Crossref records (2026-10-08).
+# Fields: key, type (article|web), authors [{family, initials}], year, title (sentence case), journal,
+# volume, issue, pages, doi, pmid, url.
+- key: luo2025
+  type: article
+  authors:
+  - family: Luo
+    initials: X.
+  - family: Wei
+    initials: Y.
+  - family: Lin
+    initials: H.
+  - family: Xiao
+    initials: N.
+  - family: Zhao
+    initials: W.
+  year: 2025
+  title: BUB1B promotes homologous recombination-mediated DNA damage repair in breast cancer cells through the PI3K/AKT
+    signaling pathway
+  journal: Oncology Reports
+  volume: '54'
+  issue: '5'
+  pages: ''
+  doi: 10.3892/or.2025.8980
+  pmid: '40910254'
+- key: ma2017
+  type: article
+  authors:
+  - family: Ma
+    initials: Q.
+  - family: Liu
+    initials: Y.
+  - family: Shang
+    initials: L.
+  - family: Yu
+    initials: J.
+  - family: Qu
+    initials: Q.
+  year: 2017
+  title: The FOXM1/BUB1B signaling pathway is essential for the tumorigenicity and radioresistance of glioblastoma
+  journal: Oncology Reports
+  volume: '38'
+  issue: '6'
+  pages: 3367–3375
+  doi: 10.3892/or.2017.6032
+  pmid: '29039578'
+- key: hanks2004
+  type: article
+  authors:
+  - family: Hanks
+    initials: S.
+  - family: Coleman
+    initials: K.
+  - family: Reid
+    initials: S.
+  - family: Plaja
+    initials: A.
+  - family: Firth
+    initials: H.
+  - family: Fitzpatrick
+    initials: D.
+  - family: Kidd
+    initials: A.
+  - family: Méhes
+    initials: K.
+  - family: Nash
+    initials: R.
+  - family: Robin
+    initials: N.
+  - family: Shannon
+    initials: N.
+  - family: Tolmie
+    initials: J.
+  - family: Swansbury
+    initials: J.
+  - family: Irrthum
+    initials: A.
+  - family: Douglas
+    initials: J.
+  - family: Rahman
+    initials: N.
+  year: 2004
+  title: Constitutional aneuploidy and cancer predisposition caused by biallelic mutations in BUB1B
+  journal: Nature Genetics
+  volume: '36'
+  issue: '11'
+  pages: 1159–61
+  doi: 10.1038/ng1449
+  pmid: '15475955'
+- key: pavone2022
+  type: article
+  authors:
+  - family: Pavone
+    initials: P.
+  - family: Pappalardo
+    initials: X. G.
+  - family: Mustafa
+    initials: N.
+  - family: Falsaperla
+    initials: R.
+  - family: Marino
+    initials: S. D.
+  - family: Corsello
+    initials: G.
+  - family: Bianca
+    initials: S.
+  - family: Parano
+    initials: E.
+  - family: Ruggieri
+    initials: M.
+  year: 2022
+  title: 'Pathogenic correlation between mosaic variegated aneuploidy 1 (MVA1) and a novel BUB1B variant: a reappraisal
+    of a severe syndrome'
+  journal: Neurological Sciences
+  volume: '43'
+  issue: '11'
+  pages: 6529–6538
+  doi: 10.1007/s10072-022-06247-w
+  pmid: '35804254'
+- key: callier2005
+  type: article
+  authors:
+  - family: Callier
+    initials: P.
+  - family: Faivre
+    initials: L.
+  - family: Cusin
+    initials: V.
+  - family: Marle
+    initials: N.
+  - family: Thauvin-Robinet
+    initials: C.
+  - family: Sandre
+    initials: D.
+  - family: Rousseau
+    initials: T.
+  - family: Sagot
+    initials: P.
+  - family: Lacombe
+    initials: E.
+  - family: Faber
+    initials: V.
+  - family: Mugneret
+    initials: F.
+  year: 2005
+  title: Microcephaly is not mandatory for the diagnosis of mosaic variegated aneuploidy syndrome
+  journal: American Journal of Medical Genetics Part A
+  volume: '137'
+  issue: '2'
+  pages: 204–7
+  doi: 10.1002/ajmg.a.30783
+  pmid: '16059936'
+- key: simmons2019
+  type: article
+  authors:
+  - family: Simmons
+    initials: A. J.
+  - family: Park
+    initials: R.
+  - family: Sterling
+    initials: N. A.
+  - family: Jang
+    initials: M. H.
+  - family: van Deursen
+    initials: J. M. A.
+  - family: Yen
+    initials: T. J.
+  - family: Cho
+    initials: S. H.
+  - family: Kim
+    initials: S.
+  year: 2019
+  title: Nearly complete deletion of BubR1 causes microcephaly through shortened mitosis and massive cell death
+  journal: Human Molecular Genetics
+  volume: '28'
+  issue: '11'
+  pages: 1822–1836
+  doi: 10.1093/hmg/ddz022
+  pmid: '30668728'
+- key: egbelakin2011
+  type: article
+  authors:
+  - family: Egbelakin
+    initials: A.
+  - family: Ferguson
+    initials: M. J.
+  - family: MacGill
+    initials: E. A.
+  - family: Lehmann
+    initials: A. S.
+  - family: Topletz
+    initials: A. R.
+  - family: Quinney
+    initials: S. K.
+  - family: Li
+    initials: L.
+  - family: McCammack
+    initials: K. C.
+  - family: Hall
+    initials: S. D.
+  - family: Renbarger
+    initials: J. L.
+  year: 2011
+  title: Increased risk of vincristine neurotoxicity associated with low CYP3A5 expression genotype in children
+    with acute lymphoblastic leukemia
+  journal: Pediatric Blood & Cancer
+  volume: '56'
+  issue: '3'
+  pages: 361–7
+  doi: 10.1002/pbc.22845
+  pmid: '21225912'
+- key: skiles2018
+  type: article
+  authors:
+  - family: Skiles
+    initials: J. L.
+  - family: Chiang
+    initials: C.
+  - family: Li
+    initials: C. H.
+  - family: Martin
+    initials: S.
+  - family: Smith
+    initials: E. L.
+  - family: Olbara
+    initials: G.
+  - family: Jones
+    initials: D. R.
+  - family: Vik
+    initials: T. A.
+  - family: Mostert
+    initials: S.
+  - family: Abbink
+    initials: F.
+  - family: Kaspers
+    initials: G. J.
+  - family: Li
+    initials: L.
+  - family: Njuguna
+    initials: F.
+  - family: Sajdyk
+    initials: T. J.
+  - family: Renbarger
+    initials: J. L.
+  year: 2018
+  title: CYP3A5 genotype and its impact on vincristine pharmacokinetics and development of neuropathy in Kenyan
+    children with cancer
+  journal: Pediatric Blood & Cancer
+  volume: '65'
+  issue: '3'
+  pages: ''
+  doi: 10.1002/pbc.26854
+  pmid: '29115708'
+- key: yamada2022
+  type: article
+  authors:
+  - family: Yamada
+    initials: C.
+  - family: Morooka
+    initials: A.
+  - family: Miyazaki
+    initials: S.
+  - family: Nagai
+    initials: M.
+  - family: Mase
+    initials: S.
+  - family: Iemura
+    initials: K.
+  - family: Tasnin
+    initials: M. N.
+  - family: Takuma
+    initials: T.
+  - family: Nakamura
+    initials: S.
+  - family: Morshed
+    initials: S.
+  - family: Koike
+    initials: N.
+  - family: Mostofa
+    initials: M. G.
+  - family: Rahman
+    initials: M. A.
+  - family: Sharmin
+    initials: T.
+  - family: Katsuta
+    initials: H.
+  - family: Ohara
+    initials: K.
+  - family: Tanaka
+    initials: K.
+  - family: Ushimaru
+    initials: T.
+  year: 2022
+  title: TORC1 inactivation promotes APC/C-dependent mitotic slippage in yeast and human cells
+  journal: iScience
+  volume: '25'
+  issue: '2'
+  pages: '103675'
+  doi: 10.1016/j.isci.2021.103675
+  pmid: '35141499'
+- key: akasaka2013
+  type: article
+  authors:
+  - family: Akasaka
+    initials: N.
+  - family: Tohyama
+    initials: J.
+  - family: Ogawa
+    initials: A.
+  - family: Takachi
+    initials: T.
+  - family: Watanabe
+    initials: A.
+  - family: Asami
+    initials: K.
+  year: 2013
+  title: Refractory infantile spasms associated with mosaic variegated aneuploidy syndrome
+  journal: Pediatric Neurology
+  volume: '49'
+  issue: '5'
+  pages: 364–7
+  doi: 10.1016/j.pediatrneurol.2013.05.014
+  pmid: '23916859'
+- key: defachelles2021
+  type: article
+  authors:
+  - family: Defachelles
+    initials: A. S.
+  - family: Bogart
+    initials: E.
+  - family: Casanova
+    initials: M.
+  - family: Merks
+    initials: J. H. M.
+  - family: Bisogno
+    initials: G.
+  - family: Calareso
+    initials: G.
+  - family: Gallego Melcon
+    initials: S.
+  - family: Gatz
+    initials: S. A.
+  - family: Le Deley
+    initials: M. C.
+  - family: McHugh
+    initials: K.
+  - family: Probst
+    initials: A.
+  - family: Rocourt
+    initials: N.
+  - family: van Rijn
+    initials: R. R.
+  - family: Wheatley
+    initials: K.
+  - family: Minard-Colin
+    initials: V.
+  - family: Chisholm
+    initials: J. C.
+  year: 2021
+  title: 'Randomized phase II trial of vincristine-irinotecan with or without temozolomide, in children and adults
+    with relapsed or refractory rhabdomyosarcoma: A European Paediatric Soft Tissue Sarcoma Study Group and Innovative
+    Therapies for Children With Cancer trial'
+  journal: Journal of Clinical Oncology
+  volume: '39'
+  issue: '27'
+  pages: 2979–2990
+  doi: 10.1200/JCO.21.00124
+  pmid: '34343032'
+- key: norris2014
+  type: article
+  authors:
+  - family: Norris
+    initials: R. E.
+  - family: Adamson
+    initials: P. C.
+  - family: Nguyen
+    initials: V. T.
+  - family: Fox
+    initials: E.
+  year: 2014
+  title: Preclinical evaluation of the PARP inhibitor, olaparib, in combination with cytotoxic chemotherapy in pediatric
+    solid tumors
+  journal: Pediatric Blood & Cancer
+  volume: '61'
+  issue: '1'
+  pages: 145–50
+  doi: 10.1002/pbc.24697
+  pmid: '24038812'
+- key: jpcscase2025
+  type: article
+  authors:
+  - family: Juan Ribelles
+    initials: A.
+  - family: Benavent
+    initials: N.
+  - family: Sanchez Mateos
+    initials: D.
+  - family: Pitou
+    initials: C.
+  - family: Zhou
+    initials: Y.
+  - family: Hardebeck
+    initials: M. C.
+  - family: Knoderer
+    initials: H.
+  - family: Cañete
+    initials: A.
+  year: 2025
+  title: 'Case report: Relapsed alveolar rhabdomyosarcoma treated with abemaciclib, temozolomide, and irinotecan
+    in the JPCS study'
+  journal: Frontiers in Oncology
+  volume: '15'
+  issue: ''
+  pages: '1637177'
+  doi: 10.3389/fonc.2025.1637177
+  pmid: '40936693'
+- key: villaruz2025
+  type: article
+  authors:
+  - family: Villaruz
+    initials: L. C.
+  - family: Jin
+    initials: J.
+  - family: Wang
+    initials: H.
+  - family: Lee
+    initials: J. J.
+  - family: Luke
+    initials: J. J.
+  - family: Rhee
+    initials: J. C.
+  - family: Waqar
+    initials: S. N.
+  - family: Shapiro
+    initials: G. I.
+  - family: Cleary
+    initials: J.
+  - family: Davar
+    initials: D.
+  - family: Burns
+    initials: T. F.
+  - family: Verma
+    initials: R.
+  - family: Amin
+    initials: M.
+  - family: Appleman
+    initials: L.
+  - family: Ciombor
+    initials: K. K.
+  - family: Davis
+    initials: E. J.
+  - family: Riess
+    initials: J. W.
+  - family: Dees
+    initials: E. C.
+  - family: Kim
+    initials: E. J.
+  - family: Cardin
+    initials: D.
+  - family: Guo
+    initials: J.
+  - family: Christner
+    initials: S. M.
+  - family: Deppas
+    initials: J.
+  - family: Parise
+    initials: A. M.
+  - family: Schmitz
+    initials: J. C.
+  - family: Guerrouahen
+    initials: B. S.
+  - family: Suchko
+    initials: M.
+  - family: Contreras
+    initials: A.
+  - family: Li
+    initials: L.
+  - family: Ferry-Galow
+    initials: K. V.
+  - family: Chang
+    initials: T.
+  - family: Jiwani
+    initials: S.
+  - family: Bakkenist
+    initials: C. J.
+  - family: Chu
+    initials: E.
+  - family: Gore
+    initials: S. D.
+  - family: Beumer
+    initials: J. H.
+  year: 2025
+  title: Phase 1 clinical trial of the ataxia telangiectasia and Rad3-related inhibitor berzosertib with irinotecan
+    in patients with advanced solid tumors (ETCTN 9938)
+  journal: Cancer
+  volume: '131'
+  issue: '21'
+  pages: ''
+  doi: 10.1002/cncr.70157
+  pmid: ''
+- key: camero2019
+  type: article
+  authors:
+  - family: Camero
+    initials: S.
+  - family: Ceccarelli
+    initials: S.
+  - family: De Felice
+    initials: F.
+  - family: Marampon
+    initials: F.
+  - family: Mannarino
+    initials: O.
+  - family: Camicia
+    initials: L.
+  - family: Vescarelli
+    initials: E.
+  - family: Pontecorvi
+    initials: P.
+  - family: Pizer
+    initials: B.
+  - family: Shukla
+    initials: R.
+  - family: Schiavetti
+    initials: A.
+  - family: Mollace
+    initials: M. G.
+  - family: Pizzuti
+    initials: A.
+  - family: Tombolini
+    initials: V.
+  - family: Marchese
+    initials: C.
+  - family: Megiorni
+    initials: F.
+  - family: Dominici
+    initials: C.
+  year: 2019
+  title: PARP inhibitors affect growth, survival and radiation susceptibility of human alveolar and embryonal rhabdomyosarcoma
+    cell lines
+  journal: Journal of Cancer Research and Clinical Oncology
+  volume: '145'
+  issue: '1'
+  pages: 137–152
+  doi: 10.1007/s00432-018-2774-6
+  pmid: ''
+- key: jpcs2025
+  type: article
+  authors:
+  - family: Juan Ribelles
+    initials: A.
+  - family: Moreno
+    initials: L.
+  - family: Ogawa
+    initials: C.
+  - family: Thorwarth
+    initials: A.
+  - family: Ruggiero
+    initials: A.
+  - family: Pitou
+    initials: C.
+  - family: Zhou
+    initials: Y.
+  - family: Hardebeck
+    initials: M. C.
+  - family: Knoderer
+    initials: H.
+  - family: Lassaletta
+    initials: A.
+  year: 2025
+  title: 'Recommended phase 2 dose for abemaciclib in combination with irinotecan and temozolomide in pediatric
+    and young adult patients with relapsed/refractory solid tumors: Results from JPCS study (Part A)'
+  journal: EJC Paediatric Oncology
+  volume: '6'
+  issue: ''
+  pages: '100477'
+  doi: 10.1016/j.ejcped.2025.100477
+  pmid: ''
+- key: nishitaniisa2019
+  type: article
+  authors:
+  - family: Nishitani-Isa
+    initials: M.
+  - family: Hiraumi
+    initials: Y.
+  - family: Nishida
+    initials: Y.
+  - family: Usami
+    initials: I.
+  - family: Maihara
+    initials: T.
+  year: 2019
+  title: 'Rhabdomyosarcoma with premature chromatid separation–mosaic variegated aneuploidy syndrome: Reduced-intensity
+    chemotherapy'
+  journal: Pediatrics International
+  volume: '61'
+  issue: '6'
+  pages: 613–616
+  doi: 10.1111/ped.13849
+  pmid: ''
+- key: acse2026
+  type: article
+  authors:
+  - family: Gatz
+    initials: S. A.
+  - family: Berlanga
+    initials: P.
+  - family: Le Teuff
+    initials: G.
+  - family: Valiev
+    initials: I.
+  - family: Leruste
+    initials: A.
+  - family: André
+    initials: N.
+  - family: Bluteau
+    initials: D.
+  - family: Corradini
+    initials: N.
+  - family: Rubino
+    initials: J.
+  - family: Thomas
+    initials: F.
+  - family: Nebchi
+    initials: S.
+  - family: Karamouza
+    initials: E.
+  - family: Petit
+    initials: J.
+  - family: Thebaud
+    initials: E.
+  - family: Rubio-San-Simón
+    initials: A.
+  - family: van Eijkelenburg
+    initials: N. K.
+  - family: Marshall
+    initials: L. V.
+  - family: Raimbault
+    initials: S.
+  - family: Canete
+    initials: A.
+  - family: Ducassou
+    initials: S.
+  - family: Makin
+    initials: G.
+  - family: Casanova
+    initials: M.
+  - family: De Carli
+    initials: E.
+  - family: Petit
+    initials: A.
+  - family: Cardon
+    initials: M.
+  - family: Lacroix
+    initials: L.
+  - family: Pierron
+    initials: G.
+  - family: Schleiermacher
+    initials: G.
+  - family: Hubank
+    initials: M. J.
+  - family: Soriano Fernandez
+    initials: A.
+  - family: Langenberg
+    initials: K. P.
+  - family: Castel
+    initials: D.
+  - family: Adam-de Beaumais
+    initials: T.
+  - family: Paoletti
+    initials: X.
+  - family: Lukka
+    initials: P. B.
+  - family: Baldry
+    initials: R.
+  - family: Mortimer
+    initials: P. G.
+  - family: Nikolaev
+    initials: S. I.
+  - family: Geoerger
+    initials: B.
+  year: 2026
+  title: 'Phase I/II study of the PARP inhibitor olaparib and irinotecan in children and young adults with recurrent/refractory
+    malignancies: Arm D of the AcSé-ESMART trial'
+  journal: Clinical Cancer Research
+  volume: '32'
+  issue: '7'
+  pages: 1210–1223
+  doi: 10.1158/1078-0432.ccr-25-3767
+  pmid: ''
+- key: liu2013
+  type: article
+  authors:
+  - family: Liu
+    initials: L.
+  - family: Wu
+    initials: J.
+  - family: Ong
+    initials: S. S.
+  - family: Chen
+    initials: T.
+  year: 2013
+  title: Cyclin-dependent kinase 4 phosphorylates and positively regulates PAX3-FOXO1 in human alveolar rhabdomyosarcoma
+    cells
+  journal: PLoS ONE
+  volume: '8'
+  issue: '2'
+  pages: e58193
+  doi: 10.1371/journal.pone.0058193
+  pmid: ''
+- key: acseceralasertib2023
+  type: web
+  authors:
+  - family: American Association for Cancer Research
+    initials: ''
+  year: 2023
+  title: Olaparib plus ceralasertib may benefit pediatric cancer patients with DNA repair-deficient tumors
+  journal: AACR News Releases
+  url: https://www.aacr.org/about-the-aacr/newsroom/news-releases/olaparib-plus-ceralasertib-may-benefit-pediatric-cancer-patients-with-dna-repair-deficient-tumors/
+- key: gsk213406
+  type: web
+  authors:
+  - family: GlaxoSmithKline
+    initials: ''
+  year: n.d.
+  title: 'Study 213406: Niraparib in combination with dostarlimab in pediatric participants with recurrent or refractory
+    solid tumors'
+  journal: GSK Study Register
+  url: https://www.gsk-studyregister.com/trials/213406
+- key: sudo2004
+  type: article
+  authors:
+  - family: Sudo
+    initials: T.
+  - family: Nitta
+    initials: M.
+  - family: Saya
+    initials: H.
+  - family: Ueno
+    initials: N. T.
+  year: 2004
+  title: Dependence of paclitaxel sensitivity on a functional spindle assembly checkpoint
+  journal: Cancer Research
+  volume: '64'
+  issue: '7'
+  pages: 2502–8
+  doi: 10.1158/0008-5472.can-03-2013
+  pmid: '15059905'
+- key: lee2004
+  type: article
+  authors:
+  - family: Lee
+    initials: E. A.
+  - family: Keutmann
+    initials: M. K.
+  - family: Dowling
+    initials: M. L.
+  - family: Harris
+    initials: E.
+  - family: Chan
+    initials: G.
+  - family: Kao
+    initials: G. D.
+  year: 2004
+  title: Inactivation of the mitotic checkpoint as a determinant of the efficacy of microtubule-targeted drugs in
+    killing human cancer cells
+  journal: Molecular Cancer Therapeutics
+  volume: '3'
+  issue: '6'
+  pages: 661–9
+  doi: ''
+  pmid: '15210851'
+- key: schnerch2013
+  type: article
+  authors:
+  - family: Schnerch
+    initials: D.
+  - family: Schmidts
+    initials: A.
+  - family: Follo
+    initials: M.
+  - family: Udi
+    initials: J.
+  - family: Felthaus
+    initials: J.
+  - family: Pfeifer
+    initials: D.
+  - family: Engelhardt
+    initials: M.
+  - family: Wäsch
+    initials: R.
+  year: 2013
+  title: BubR1 is frequently repressed in acute myeloid leukemia and its re-expression sensitizes cells to antimitotic
+    therapy
+  journal: Haematologica
+  volume: '98'
+  issue: '12'
+  pages: 1886–95
+  doi: 10.3324/haematol.2013.087452
+  pmid: '23812934'
+- key: cheng2017
+  type: article
+  authors:
+  - family: Cheng
+    initials: B.
+  - family: Crasta
+    initials: K.
+  year: 2017
+  title: Consequences of mitotic slippage for antimicrotubule drug therapy
+  journal: Endocrine-Related Cancer
+  volume: '24'
+  issue: '9'
+  pages: T97–T106
+  doi: 10.1530/ERC-17-0147
+  pmid: '28684541'
+- key: oromendia2012
+  type: article
+  authors:
+  - family: Oromendia
+    initials: A. B.
+  - family: Dodgson
+    initials: S. E.
+  - family: Amon
+    initials: A.
+  year: 2012
+  title: Aneuploidy causes proteotoxic stress in yeast
+  journal: Genes & Development
+  volume: '26'
+  issue: '24'
+  pages: 2696–708
+  doi: 10.1101/gad.207407.112
+  pmid: '23222101'
+- key: donnelly2014
+  type: article
+  authors:
+  - family: Donnelly
+    initials: N.
+  - family: Passerini
+    initials: V.
+  - family: Dürrbaum
+    initials: M.
+  - family: Stingele
+    initials: S.
+  - family: Storchová
+    initials: Z.
+  year: 2014
+  title: HSF1 deficiency and impaired HSP90-dependent protein folding are hallmarks of aneuploid human cells
+  journal: The EMBO Journal
+  volume: '33'
+  issue: '20'
+  pages: 2374–87
+  doi: 10.15252/embj.201488648
+  pmid: '25205676'
+- key: ng2021
+  type: article
+  authors:
+  - family: Ng
+    initials: M. Y.
+  - family: Li
+    initials: H.
+  - family: Ghelfi
+    initials: M. D.
+  - family: Goldman
+    initials: Y. E.
+  - family: Cooperman
+    initials: B. S.
+  year: 2021
+  title: Ataluren and aminoglycosides stimulate read-through of nonsense codons by orthogonal mechanisms
+  journal: Proceedings of the National Academy of Sciences
+  volume: '118'
+  issue: '2'
+  pages: ''
+  doi: 10.1073/pnas.2020599118
+  pmid: '33414181'
+- key: atanasova2017
+  type: article
+  authors:
+  - family: Atanasova
+    initials: V. S.
+  - family: Jiang
+    initials: Q.
+  - family: Prisco
+    initials: M.
+  - family: Gruber
+    initials: C.
+  - family: Piñón Hofbauer
+    initials: J.
+  - family: Chen
+    initials: M.
+  - family: Has
+    initials: C.
+  - family: Bruckner-Tuderman
+    initials: L.
+  - family: McGrath
+    initials: J. A.
+  - family: Uitto
+    initials: J.
+  - family: South
+    initials: A. P.
+  year: 2017
+  title: 'Amlexanox enhances premature termination codon read-through in COL7A1 and expression of full length type
+    VII collagen: Potential therapy for recessive dystrophic epidermolysis bullosa'
+  journal: Journal of Investigative Dermatology
+  volume: '137'
+  issue: '9'
+  pages: 1842–1849
+  doi: 10.1016/j.jid.2017.05.011
+  pmid: '28549954'
+- key: benslimane2023
+  type: article
+  authors:
+  - family: Benslimane
+    initials: N.
+  - family: Miressi
+    initials: F.
+  - family: Loret
+    initials: C.
+  - family: Richard
+    initials: L.
+  - family: Nizou
+    initials: A.
+  - family: Pyromali
+    initials: I.
+  - family: Faye
+    initials: P. A.
+  - family: Favreau
+    initials: F.
+  - family: Lejeune
+    initials: F.
+  - family: Lia
+    initials: A. S.
+  year: 2023
+  title: 'Amlexanox: Readthrough induction and nonsense-mediated mRNA decay inhibition in a Charcot-Marie-Tooth
+    model of hiPSC-derived neuronal cells harboring a nonsense mutation in GDAP1 gene'
+  journal: Pharmaceuticals
+  volume: '16'
+  issue: '7'
+  pages: ''
+  doi: 10.3390/ph16071034
+  pmid: '37513945'
+- key: mengel2021
+  type: article
+  authors:
+  - family: Mengel
+    initials: E.
+  - family: Patterson
+    initials: M. C.
+  - family: Da Riol
+    initials: R. M.
+  - family: Del Toro
+    initials: M.
+  - family: Deodato
+    initials: F.
+  - family: Gautschi
+    initials: M.
+  - family: Grunewald
+    initials: S.
+  - family: Grønborg
+    initials: S.
+  - family: Harmatz
+    initials: P.
+  - family: Héron
+    initials: B.
+  - family: Maier
+    initials: E. M.
+  - family: Roubertie
+    initials: A.
+  - family: Santra
+    initials: S.
+  - family: Tylki-Szymanska
+    initials: A.
+  - family: Day
+    initials: S.
+  - family: Andreasen
+    initials: A. K.
+  - family: Geist
+    initials: M. A.
+  - family: Havnsøe Torp Petersen
+    initials: N.
+  - family: Ingemann
+    initials: L.
+  - family: Hansen
+    initials: T.
+  - family: Blaettler
+    initials: T.
+  - family: Kirkegaard
+    initials: T.
+  - family: Í Dali
+    initials: C.
+  year: 2021
+  title: 'Efficacy and safety of arimoclomol in Niemann-Pick disease type C: Results from a double-blind, randomised,
+    placebo-controlled, multinational phase 2/3 trial of a novel treatment'
+  journal: Journal of Inherited Metabolic Disease
+  volume: '44'
+  issue: '6'
+  pages: 1463–1480
+  doi: 10.1002/jimd.12428
+  pmid: '34418116'
+- key: gore2000
+  type: article
+  authors:
+  - family: Gore
+    initials: S. D.
+  - family: Carducci
+    initials: M. A.
+  year: 2000
+  title: 'Modifying histones to tame cancer: Clinical development of sodium phenylbutyrate and other histone deacetylase
+    inhibitors'
+  journal: Expert Opinion on Investigational Drugs
+  volume: '9'
+  issue: '12'
+  pages: 2923–34
+  doi: 10.1517/13543784.9.12.2923
+  pmid: '11093362'
+- key: mangkalaphiban2024
+  type: article
+  authors:
+  - family: Mangkalaphiban
+    initials: K.
+  - family: Fu
+    initials: L.
+  - family: Du
+    initials: M.
+  - family: Thrasher
+    initials: K.
+  - family: Keeling
+    initials: K. M.
+  - family: Bedwell
+    initials: D. M.
+  - family: Jacobson
+    initials: A.
+  year: 2024
+  title: Extended stop codon context predicts nonsense codon readthrough efficiency in human cells
+  journal: Nature Communications
+  volume: '15'
+  issue: ''
+  pages: '2486'
+  doi: 10.1038/s41467-024-46703-z
+  pmid: ''
+- key: ema2025translarna
+  type: web
+  authors:
+  - family: European Medicines Agency
+    initials: ''
+  year: 2025
+  title: 'Translarna (ataluren): European public assessment report; conditional marketing authorisation not renewed'
+  journal: European Medicines Agency
+  url: https://www.ema.europa.eu/en/medicines/human/EPAR/translarna
+- key: sandoval1998
+  type: article
+  authors:
+  - family: Sandoval
+    initials: C.
+  - family: Swift
+    initials: M.
+  year: 1998
+  title: Treatment of lymphoid malignancies in patients with ataxia-telangiectasia
+  journal: Medical and Pediatric Oncology
+  volume: '31'
+  issue: '6'
+  pages: 491-497
+  doi: 10.1002/(sici)1096-911x(199812)31:6<491::aid-mpo5>3.0.co;2-b
+  pmid: '9835901'
+- key: bienemann2011
+  type: article
+  authors:
+  - family: Bienemann
+    initials: K.
+  - family: Burkhardt
+    initials: B.
+  - family: Modlich
+    initials: S.
+  - family: Meyer
+    initials: U.
+  - family: "Möricke"
+    initials: A.
+  - family: Bienemann
+    initials: K.
+  - family: "Mauz-Körholz"
+    initials: C.
+  - family: Escherich
+    initials: G.
+  - family: Zimmermann
+    initials: M.
+  - family: "Körholz"
+    initials: D.
+  - family: Janka-Schaub
+    initials: G.
+  - family: Schrappe
+    initials: M.
+  - family: Reiter
+    initials: A.
+  - family: Borkhardt
+    initials: A.
+  year: 2011
+  title: 'Promising therapy results for lymphoid malignancies in children with chromosomal breakage syndromes (Ataxia
+    teleangiectasia or Nijmegen-breakage syndrome): a retrospective survey'
+  journal: British Journal of Haematology
+  volume: '155'
+  issue: '4'
+  pages: 468-476
+  doi: 10.1111/j.1365-2141.2011.08863.x
+  pmid: '21923652'
+- key: gluckman1983
+  type: article
+  authors:
+  - family: Gluckman
+    initials: E.
+  - family: Devergie
+    initials: A.
+  - family: Dutreix
+    initials: J.
+  year: 1983
+  title: 'Radiosensitivity in Fanconi anaemia: application to the conditioning regimen for bone marrow transplantation'
+  journal: British Journal of Haematology
+  volume: '54'
+  issue: '3'
+  pages: 431-440
+  doi: 10.1111/j.1365-2141.1983.tb02117.x
+  pmid: '6344915'
