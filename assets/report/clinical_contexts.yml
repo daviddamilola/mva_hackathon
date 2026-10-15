@@ -57,8 +57,8 @@ contexts:
             citation: Skiles JL et al., Pediatr Blood Cancer 2018
             pmid: "29115708"
           - statement: >-
-              Direction of risk, stated plainly: a CYP3A5 non-expresser genotype is the higher-risk
-              genotype in these reports. This is a consideration for neuropathy monitoring and for
+              A CYP3A5 non-expresser genotype is the higher-risk genotype in these reports.
+              This is a consideration for neuropathy monitoring and for
               dose decisions made by the treating team, not a recommendation to change the protocol.
             citation: interpretation of the two reports above
             pmid: ""
@@ -69,7 +69,7 @@ contexts:
           Cyclophosphamide and ifosfamide are prodrugs requiring CYP2B6-mediated 4-hydroxylation.
           Reduced activity therefore raises an EFFICACY question (less active metabolite formed),
           not the toxicity question that reduced metabolism usually implies. That direction is the
-          opposite of the familiar reading and is stated deliberately. PharmCAT holds no CPIC or
+          opposite of the familiar reading. PharmCAT holds no CPIC or
           DPWG recommendation for either drug, so this is a mechanistic consideration rather than a
           guideline finding, and its clinical significance in this regimen is not established.
       - label: Irinotecan (UGT1A1)
@@ -127,12 +127,11 @@ contexts:
         Together these support an elevated plausible risk of therapy-related secondary malignancy,
         bearing on cumulative-dose decisions and on long-term haematological surveillance.
       - >-
-        This is deliberately not framed as a reason to alter a rhabdomyosarcoma protocol. This
-        analysis cannot support that, and saying so is part of the finding: it is a risk
-        consideration for the treating team, weighed against a therapy given with curative intent
-        for a malignant tumour.
+        This is not a reason to alter a rhabdomyosarcoma protocol, and this analysis could not
+        support one. It is a risk consideration for the treating team, weighed against a therapy
+        given with curative intent for a malignant tumour.
       - >-
-        The tension with the anti-target rule is real and is stated rather than left unremarked. The
+        The tension with the anti-target rule is real. The
         rule that excludes topoisomerase II poisons and other mitotic-fidelity inhibitors from the
         candidate list governs the proposal of NEW drugs for a mitotic-fidelity disorder. It does
         not license withdrawing established therapy, and the pipeline does not apply it to treatment
@@ -221,11 +220,10 @@ contexts:
     why: >-
       Epileptic seizures occur in 45.1% of published MVA1 cases [@pavone2022], and refractory infantile spasms are
       reported in MVA [@akasaka2013]. Seizures are
-      NOT among the features released to participants. Under the epistemic rule that means they were
-      not reported, which is not the same as being absent: they may be absent, may not have been
-      assessed, or may simply not have been released. These genotypes are therefore presented as
-      contingency, applicable if seizures are present or emerge. No claim is made either way about
-      whether this child has seizures.
+      not among the features released to participants, so under the feature-absence rule they are
+      unknown here rather than absent. These genotypes are therefore presented as contingency,
+      applicable if seizures are present or emerge. No claim is made either way about whether this
+      child has seizures.
     findings:
       - label: Carbamazepine and oxcarbazepine severe cutaneous reactions (HLA-B*15:02, HLA-A*31:01)
         genes: [HLA-B, HLA-A]

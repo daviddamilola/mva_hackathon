@@ -128,6 +128,83 @@ SUPPORT_HEADING = {
     "mechanism_only": ("Derived from the genotype",
                        "These axes follow from the variants themselves rather than from any observed feature."),
 }
+# ---- stage 1b verdict rows, as printed
+# The join emits one row per (allele tested, evidence level, annotation category), so a drug whose
+# guideline text is the same for every allele produced three or four identical paragraphs. The rows
+# are collapsed for display only: the TSV keeps every raw row, and the alleles and levels that
+# differed between them are merged into one cell rather than dropped.
+def collapse_rows(rows):
+    out, seen = [], {}
+    for r in rows:
+        text = r.get("guideline_text") or r.get("flag_basis") or ""
+        key = (r.get("gene"), r.get("caller"), r.get("flag"), text, r.get("tier"), r.get("patient_support"))
+        if key not in seen:
+            seen[key] = dict(r, calls=[], levels=[], matched=[], text=text)
+            out.append(seen[key])
+        g = seen[key]
+        for field, bucket in (("called", "calls"), ("evidence_level", "levels"), ("matched_ot_allele", "matched")):
+            v = r.get(field)
+            if v and v not in g[bucket]:
+                g[bucket].append(v)
+    for g in out:
+        g["called_merged"] = "; ".join(g["calls"]) or "-"
+        g["levels_merged"] = ", ".join(sorted(g["levels"])) or "-"
+        g["matched_merged"] = "; ".join(g["matched"]) or "-"
+    return out
+
+
+# every drug name PharmCAT holds, used to spot a guideline paragraph worded for a different drug
+PC_DRUG_NAMES = sorted({name for src in ((pc_report or {}).get("drugs") or {}).values() for name in src},
+                       key=len, reverse=True)
+
+
+def note_key(i):
+    """a, b, ... z, aa, ab, ... : a key for a guideline paragraph quoted once below its table."""
+    k = ""
+    i += 1
+    while i:
+        i, rem = divmod(i - 1, 26)
+        k = chr(97 + rem) + k
+    return k
+
+
+# a basis this short says all it has to say in the cell; only a quoted guideline paragraph is keyed
+NOTE_INLINE_MAX = 80
+
+
+def keyed_notes(drugs):
+    """Guideline text out of the table cells: one keyed note per unique paragraph, quoted once.
+
+    A note also records any other drug PharmCAT's own text names, because a 'no recommendation'
+    paragraph is sometimes worded for a different member of the drug class (PharmCAT holds it that
+    way); printing that without comment reads as a join error.
+    """
+    seen, order = {}, []
+    for d in drugs:
+        for r in d["rows_collapsed"]:
+            t = (r.get("text") or "").strip()
+            r["note"], r["basis_short"] = "", ""
+            if not t or t == "-":
+                continue
+            if len(t) <= NOTE_INLINE_MAX:     # "no PGx rows in Open Targets" and the like stay in the cell
+                r["basis_short"] = t
+                continue
+            if t not in seen:
+                seen[t] = {"key": note_key(len(order)), "text": t, "drugs": set()}
+                order.append(t)
+            seen[t]["drugs"].add((d["name"] or "").lower())
+            r["note"] = seen[t]["key"]
+    notes = []
+    for t in order:
+        n = seen[t]
+        others = [x for x in PC_DRUG_NAMES
+                  if x.lower() not in n["drugs"] and re.search(r"\b" + re.escape(x) + r"\b", t, re.I)]
+        notes.append({"key": n["key"], "text": t, "for": sorted(n["drugs"]), "names_other_drug": others[:2],
+                      # the join concatenates one source's statements with '||'; they are separate statements
+                      "statements": [x.strip() for x in t.split("||") if x.strip()]})
+    return notes
+
+
 ot_by_axis = []
 def axis_order(ax):
     o = (ot_axes.get(ax) or {}).get("order")
@@ -144,7 +221,8 @@ for ax in sorted(ot_axes, key=axis_order):
         ba_text = ", ".join(f"level {k}: {v}" for k, v in (ba.get("by_level") or {}).items())
         if ba.get("genes_level_2"):
             ba_text += " (level-2 genes: " + ", ".join(ba["genes_level_2"]) + ")"
-        drugs.append({"name": name, "tier": drows[0].get("tier"), "rows": drows, "below_asserted": ba_text,
+        drugs.append({"name": name, "tier": drows[0].get("tier"), "rows": drows,
+                      "rows_collapsed": collapse_rows(drows), "below_asserted": ba_text,
                       "support": drows[0].get("patient_support") or c.get("patient_support"),
                       "stage": c.get("max_clinical_stage") or "", "investigational": c.get("investigational"),
                       "move_up": c.get("move_up") or "", "caution": c.get("caution") or "",
@@ -153,7 +231,7 @@ for ax in sorted(ot_axes, key=axis_order):
     support = next((d["support"] for d in drugs if d.get("support")), None)
     ot_by_axis.append({"axis": ax, "title": ot_axes[ax].get("title"), "rationale": ot_axes[ax].get("rationale"),
                        "role": ot_axes[ax].get("role") or "repurposing",
-                       "drugs": drugs, "patient_support": support})
+                       "drugs": drugs, "patient_support": support, "notes": keyed_notes(drugs)})
 # treatment the child is already receiving is reported in its own block, never as a repurposing axis:
 # the anti-target rules do not apply to it, and its drugs were queried whatever the rules said
 ot_regimen = [x for x in ot_by_axis if x["role"] == "regimen"]
@@ -433,9 +511,19 @@ def tex(s):
     if s is None:
         return ""
     s = str(s)
-    rep = {"\\": r"\textbackslash{}", "&": r"\&", "%": r"\%", "$": r"\$", "#": r"\#", "_": r"\_", "{": r"\{", "}": r"\}",
-           "~": r"\textasciitilde{}", "^": r"\textasciicircum{}", "<": r"\textless{}", ">": r"\textgreater{}", "|": r"\textbar{}"}
-    return re.sub(r"[\\&%$#_{}~^<>|]", lambda m: rep[m.group(0)], s)
+    rep = {"\\": r"\textbackslash{}", "&": r"\&\allowbreak{}", "%": r"\%", "$": r"\$", "#": r"\#",
+           # a break is allowed after _ and &, and below after / . : ; and inside any very long run:
+           # reference names, accessions, URLs and DOIs are single words with no break opportunity
+           # of their own, and without one they stand past the margin
+           "_": r"\_\allowbreak{}", "{": r"\{", "}": r"\}",
+           "~": r"\textasciitilde{}", "^": r"\textasciicircum{}", "<": r"\textless{}", ">": r"\textgreater{}",
+           "|": r"\textbar{}"}
+    # A long run with no break opportunity (md5, git commit, accession) would otherwise stand past the
+    # margin. Marked before escaping, where such a run is by definition free of special characters.
+    s = re.sub(r"[A-Za-z0-9]{16,}", lambda m: "\x00".join(re.findall(r".{1,9}", m.group(0))), s)
+    s = re.sub(r"[\\&%$#_{}~^<>|]", lambda m: rep[m.group(0)], s)
+    s = re.sub(r"(?<=[/.:;])(?=\S)", "\x00", s)
+    return s.replace("\x00", r"\allowbreak{}")
 
 
 def fmt(x, nd=3):
@@ -444,6 +532,20 @@ def fmt(x, nd=3):
     if isinstance(x, float):
         return f"{x:.{nd}g}" if abs(x) < 1e-3 and x != 0 else f"{x:.{nd}f}".rstrip("0").rstrip(".")
     return str(x)
+
+
+# Aldy truncates the reference-allele name to "*ference" in its own output (bin/compare_star_alleles.py
+# normalises the same synonyms for comparison). The TSV keeps the caller's raw string; only the
+# printed name is repaired here, and no other allele name is rewritten.
+STAR_DISPLAY_SYNONYMS = {"*ference": "Reference", "*ref": "Reference", "*Ref": "Reference"}
+
+
+def starname(x):
+    """A caller's diplotype as printed: repair truncated reference-allele names, change nothing else."""
+    if not x:
+        return x
+    return "/".join(STAR_DISPLAY_SYNONYMS.get(t, STAR_DISPLAY_SYNONYMS.get(t.lower(), t))
+                    for t in str(x).split("/"))
 
 
 def mdcell(x):
@@ -573,7 +675,7 @@ def refs_used():
 ctx.update(tool=tool, db=db, params=prov.get("params", {}), cite=cite, cite_pmid=cite_pmid, refs_used=refs_used,
            references=[l.strip() for l in open(os.path.join(a.templates, "references.txt")) if l.strip()])
 env = Environment(loader=FileSystemLoader(a.templates), undefined=StrictUndefined, trim_blocks=True, lstrip_blocks=True)
-env.filters.update(tex=tex, fmt=fmt, pct=pct, mdcell=mdcell, cite=cite)
+env.filters.update(tex=tex, fmt=fmt, pct=pct, mdcell=mdcell, cite=cite, starname=starname)
 for tpl, out in (("report.md.j2", a.out_md), ("report.tex.j2", a.out_tex)):
     cite_used.clear()
     open(out, "w").write(env.get_template(tpl).render(**ctx))
