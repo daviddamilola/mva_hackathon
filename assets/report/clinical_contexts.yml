@@ -23,8 +23,15 @@
 # Population frequencies quoted below: Pavone P et al., Neurol Sci 2022;43:6529-38 (PRISMA review,
 # 31 MVA1 cases). They contextualise; they never assert a feature in this child.
 
+# supplementary: true moves a context's full text, findings table and annotations into the report's
+# appendix. These contexts bear on safety and feasibility, not on whether a repurposing candidate is
+# valid, so the main report keeps the counts and the reasoning and the appendix keeps the detail.
+# One exception is deliberate: the MT-RNR1 aminoglycoside gate is a precondition for two candidates,
+# so it is reported with those candidates in the stage 1b section, not only here.
+#
 contexts:
   - id: rhabdomyosarcoma
+    supplementary: true
     title: Rhabdomyosarcoma chemotherapy
     patient_support: released_feature
     why: >-
@@ -113,6 +120,7 @@ contexts:
         COMT: platinum ototoxicity
 
   - id: therapy_related_risk
+    supplementary: true
     title: Therapy-related risk in a chromosomal instability syndrome
     patient_support: released_feature
     why: >-
@@ -134,8 +142,8 @@ contexts:
         The tension with the anti-target rule is real. The
         rule that excludes topoisomerase II poisons and other mitotic-fidelity inhibitors from the
         candidate list governs the proposal of NEW drugs for a mitotic-fidelity disorder. It does
-        not license withdrawing established therapy, and the pipeline does not apply it to treatment
-        the child is already receiving.
+        not license withdrawing established therapy, and the pipeline does not apply it to agents
+        of the standard regimen.
       - >-
         Radiotherapy is an open question, not a finding. Other chromosomal instability syndromes
         (ataxia telangiectasia, Nijmegen breakage syndrome) have documented clinical
@@ -149,6 +157,7 @@ contexts:
         unresolved, and it is a legitimate research question raised by this case.
 
   - id: anaesthesia
+    supplementary: true
     title: Anaesthesia and procedural sedation
     patient_support: released_feature
     why: >-
@@ -179,6 +188,7 @@ contexts:
         drugs: [ibuprofen, celecoxib]
 
   - id: supportive
+    supplementary: true
     title: Supportive care during myelosuppressive therapy
     patient_support: released_feature
     why: >-
@@ -215,6 +225,7 @@ contexts:
         drugs: [omeprazole, lansoprazole, pantoprazole, esomeprazole]
 
   - id: conditional_antiepileptic
+    supplementary: true
     title: Antiepileptic therapy — applicable only if seizures are present or emerge
     patient_support: syndrome_only
     why: >-

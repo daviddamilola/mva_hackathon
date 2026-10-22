@@ -1121,3 +1121,255 @@
   pages: 431-440
   doi: 10.1111/j.1365-2141.1983.tb02117.x
   pmid: '6344915'
+- key: whirlcarrillo2021
+  type: article
+  authors:
+  - family: Whirl-Carrillo
+    initials: M.
+  - family: Huddart
+    initials: R.
+  - family: Gong
+    initials: L.
+  - family: Sangkuhl
+    initials: K.
+  - family: Thorn
+    initials: C. F.
+  - family: Whaley
+    initials: R.
+  - family: Klein
+    initials: T. E.
+  year: 2021
+  title: An evidence-based framework for evaluating pharmacogenomics knowledge for personalized medicine
+  journal: Clinical Pharmacology and Therapeutics
+  volume: '110'
+  issue: '3'
+  pages: 563-572
+  doi: 10.1002/cpt.2350
+  pmid: '34216021'
+- key: thormann2019
+  type: article
+  authors:
+  - family: Thormann
+    initials: A.
+  - family: Halachev
+    initials: M.
+  - family: McLaren
+    initials: W.
+  - family: Moore
+    initials: D. J.
+  - family: Svinti
+    initials: V.
+  - family: Campbell
+    initials: A.
+  - family: Kerr
+    initials: S. M.
+  - family: Tischkowitz
+    initials: M.
+  - family: Hunt
+    initials: S. E.
+  - family: Dunlop
+    initials: M. G.
+  - family: Hurles
+    initials: M. E.
+  - family: Wright
+    initials: C. F.
+  year: 2019
+  title: Flexible and scalable diagnostic filtering of genomic variants using G2P with Ensembl VEP
+  journal: Nature Communications
+  volume: '10'
+  issue: '1'
+  pages: '2373'
+  doi: 10.1038/s41467-019-10016-3
+  pmid: '31147538'
+- key: bhuvanagiri2014
+  type: article
+  authors:
+  - family: Bhuvanagiri
+    initials: M.
+  - family: Lewis
+    initials: J.
+  - family: Putzker
+    initials: K.
+  - family: Becker
+    initials: J. P.
+  - family: Leicht
+    initials: S.
+  - family: Krijgsveld
+    initials: J.
+  - family: Batra
+    initials: R.
+  - family: Turnwald
+    initials: B.
+  - family: Jovanovic
+    initials: B.
+  - family: Hauer
+    initials: C.
+  - family: Sieber
+    initials: J.
+  - family: Hentze
+    initials: M. W.
+  - family: Kulozik
+    initials: A. E.
+  year: 2014
+  title: 5-azacytidine inhibits nonsense-mediated decay in a MYC-dependent fashion
+  journal: EMBO Molecular Medicine
+  volume: '6'
+  issue: '12'
+  pages: 1593-1609
+  doi: 10.15252/emmm.201404461
+  pmid: '25319547'
+- key: zhao2022
+  type: article
+  authors:
+  - family: Zhao
+    initials: J.
+  - family: Li
+    initials: Z.
+  - family: Puri
+    initials: R.
+  - family: Liu
+    initials: K.
+  - family: Nunez
+    initials: I.
+  - family: Chen
+    initials: L.
+  - family: Zheng
+    initials: S.
+  year: 2022
+  title: Molecular profiling of individual FDA-approved clinical drugs identifies modulators of nonsense-mediated mRNA decay
+  journal: Molecular Therapy. Nucleic Acids
+  volume: '27'
+  issue: ''
+  pages: 304-318
+  doi: 10.1016/j.omtn.2021.12.003
+  pmid: '35024243'
+- key: amarschwartz2023
+  type: article
+  authors:
+  - family: Amar-Schwartz
+    initials: A.
+  - family: Cohen
+    initials: Y.
+  - family: Elhaj
+    initials: A.
+  - family: Ben-Hur
+    initials: V.
+  - family: Siegfried
+    initials: Z.
+  - family: Karni
+    initials: R.
+  - family: Dor
+    initials: T.
+  year: 2023
+  title: Inhibition of nonsense-mediated mRNA decay may improve stop codon read-through therapy for Duchenne muscular dystrophy
+  journal: Human Molecular Genetics
+  volume: '32'
+  issue: '15'
+  pages: 2455-2463
+  doi: 10.1093/hmg/ddad072
+  pmid: '37145099'
+- key: nomakuchi2016
+  type: article
+  authors:
+  - family: Nomakuchi
+    initials: T. T.
+  - family: Rigo
+    initials: F.
+  - family: Aznarez
+    initials: I.
+  - family: Krainer
+    initials: A. R.
+  year: 2016
+  title: Antisense oligonucleotide-directed inhibition of nonsense-mediated mRNA decay
+  journal: Nature Biotechnology
+  volume: '34'
+  issue: '2'
+  pages: 164-166
+  doi: 10.1038/nbt.3427
+  pmid: '26655495'
+- key: kim2022
+  type: article
+  authors:
+  - family: Kim
+    initials: Y. J.
+  - family: Nomakuchi
+    initials: T.
+  - family: Papaleonidopoulou
+    initials: F.
+  - family: Yang
+    initials: L.
+  - family: Zhang
+    initials: Q.
+  - family: Krainer
+    initials: A. R.
+  year: 2022
+  title: Gene-specific nonsense-mediated mRNA decay targeting for cystic fibrosis therapy
+  journal: Nature Communications
+  volume: '13'
+  issue: '1'
+  pages: '2978'
+  doi: 10.1038/s41467-022-30668-y
+  pmid: '35624092'
+- key: nickless2014
+  type: article
+  authors:
+  - family: Nickless
+    initials: A.
+  - family: Jackson
+    initials: E.
+  - family: Marasa
+    initials: J.
+  - family: Nugent
+    initials: P.
+  - family: Mercer
+    initials: R. W.
+  - family: Piwnica-Worms
+    initials: D.
+  - family: You
+    initials: Z.
+  year: 2014
+  title: Intracellular calcium regulates nonsense-mediated mRNA decay
+  journal: Nature Medicine
+  volume: '20'
+  issue: '8'
+  pages: 961-966
+  doi: 10.1038/nm.3620
+  pmid: '25064126'
+- key: suijkerbuijk2010
+  type: article
+  authors:
+  - family: Suijkerbuijk
+    initials: S. J. E.
+  - family: van Osch
+    initials: M. H. J.
+  - family: Bos
+    initials: F. L.
+  - family: Hanks
+    initials: S.
+  - family: Rahman
+    initials: N.
+  - family: Kops
+    initials: G. J. P. L.
+  year: 2010
+  title: Molecular causes for BUBR1 dysfunction in the human cancer predisposition syndrome mosaic variegated aneuploidy
+  journal: Cancer Research
+  volume: '70'
+  issue: '12'
+  pages: 4891-4900
+  doi: 10.1158/0008-5472.CAN-09-4319
+  pmid: '20516114'
+- key: nagy1998
+  type: article
+  authors:
+  - family: Nagy
+    initials: E.
+  - family: Maquat
+    initials: L. E.
+  year: 1998
+  title: 'A rule for termination-codon position within intron-containing genes: when nonsense affects RNA abundance'
+  journal: Trends in Biochemical Sciences
+  volume: '23'
+  issue: '6'
+  pages: 198-199
+  doi: 10.1016/S0968-0004(98)01208-0
+  pmid: '9644970'

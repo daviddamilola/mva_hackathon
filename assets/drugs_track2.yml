@@ -25,6 +25,12 @@ drug_list_example: false
 # scores "is the proposed drug repurposing candidate well-supported by that mechanism". The
 # tumour-directed axis treats the malignancy the syndrome produced and is supported by tumour biology
 # rather than by the BUB1B variant, so it follows them.
+# supplementary: true on an axis moves its candidate listing, verdict tables and notes into the
+# report's appendix, leaving a summary in the main text. It is for axes that do not bear on whether
+# a MECHANISM-derived candidate is valid: the tumour-directed axis, whose candidates all need a
+# tumour genotype germline data cannot supply, and the regimen axis, which is standard therapy
+# rather than a proposal. It does not change any verdict, tier or count.
+#
 axes:
   readthrough:
     title: Readthrough of the nonsense allele, with NMD inhibition
@@ -62,6 +68,7 @@ axes:
       in any aneuploidy syndrome and no biomarker of proteotoxic stress for this child.
   regimen:
     title: Standard rhabdomyosarcoma regimen
+    supplementary: true
     order: 4
     role: regimen
     rationale: >-
@@ -78,6 +85,7 @@ axes:
       [@nishitaniisa2019], which bears on any proposal to intensify therapy.
   1:
     title: Partners for irinotecan in this child's own tumour
+    supplementary: true
     order: 3
     rationale: >-
       Irinotecan is already part of standard rhabdomyosarcoma therapy, so the repurposing question is
@@ -141,8 +149,11 @@ candidates:
       The only approved compound in this list with nonsense-mediated-decay-inhibition literature,
       and that literature is thin: it stabilises PTC-containing transcripts and promotes readthrough
       in recessive dystrophic epidermolysis bullosa cells [@atanasova2017] and in a Charcot-Marie-Tooth
-      neuronal model [@benslimane2023], with no data in any aneuploidy or checkpoint disorder. No NMD
-      inhibitor is approved; the tool compounds used in that field are not medicines.
+      neuronal model [@benslimane2023], with no data in any aneuploidy or checkpoint disorder. No drug has been
+      developed or approved FOR NMD inhibition; the tool compounds used in that field are not
+      medicines, and the approved drugs that inhibit NMD incidentally (amlexanox here, and the
+      cardiac glycosides [@-nickless2014]) do so off-target, at exposures whose safety margin for
+      this purpose is unestablished.
     move_up: >-
       Evidence that NMD inhibition raises full-length BubR1 when combined with a readthrough agent,
       in patient-derived cells; and clarity on whether a systemically adequate exposure is reachable,
@@ -174,7 +185,7 @@ candidates:
       The same biomarker evidence as arimoclomol, plus a reason to prefer the chaperone activity over
       the transcriptional one in this context.
 
-  # ---- regimen (treatment already given; PGx lookup regardless of the anti-target verdict)
+  # ---- regimen (standard-regimen agents for the released diagnosis; PGx lookup regardless of the anti-target verdict)
   - {name: vincristine,      axis: regimen, patient_support: released_feature}
   - {name: dactinomycin,     axis: regimen, patient_support: released_feature}
   - {name: cyclophosphamide, axis: regimen, patient_support: released_feature}
@@ -194,7 +205,7 @@ candidates:
     patient_support: released_feature
     caution: >-
       Tier 3: in tension with the regimen-intensity finding in the section on what the mechanism
-      implies for the therapy already given, and not assessable without the tumour genotype.
+      implies for standard-regimen therapy, and not assessable without the tumour genotype.
     move_up: >-
       A tumour aneuploidy score or homologous-recombination status from the child's tumour, since
       the trial's activity signal was enriched in high-aneuploidy tumours; and a confirmed

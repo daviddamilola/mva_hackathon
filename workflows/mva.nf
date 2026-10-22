@@ -4,8 +4,6 @@
  * Stage 1b (Open Targets annotation) is a separate entry point: pgx_annotate.nf.
  * aneuploidy burden + panel CNV/SV. Planned: genome QC, report (see docs/).
  */
-import groovy.json.JsonOutput
-
 include { PREPARE_REFERENCE } from '../subworkflows/local/prepare_reference'
 include { ALIGN_LANES       } from '../subworkflows/local/align_lanes'
 include { PGX_CALL          } from '../subworkflows/local/pgx_call'
@@ -17,6 +15,7 @@ include { REPORT            } from '../modules/local/report'
 include { REPORT_FIGURES    } from '../modules/local/report_figures'
 include { OT_QUERY as OT_LITERATURE   } from '../modules/local/ot_query'
 include { OT_QUERY as OT_TRACTABILITY } from '../modules/local/ot_query'
+include { OT_NEIGHBOURHOOD    } from '../modules/local/ot_neighbourhood'
 
 workflow MVA {
     main:
@@ -104,7 +103,9 @@ workflow MVA {
         OT_LITERATURE(Channel.of([ 'literature', params.unmet_need_disease_ids ]))
         // can the causal gene itself be drugged? the answer is the premise of the candidate list
         OT_TRACTABILITY(Channel.of([ 'tractability', params.mechanism_gene ]))
-        ch_versions = ch_versions.mix(OT_LITERATURE.out.versions, OT_TRACTABILITY.out.versions)
+        // what the drugs that exist near this pathway actually do: computed, not asserted
+        OT_NEIGHBOURHOOD(file("${projectDir}/assets/mitotic_drug_targets.tsv", checkIfExists: true))
+        ch_versions = ch_versions.mix(OT_LITERATURE.out.versions, OT_TRACTABILITY.out.versions, OT_NEIGHBOURHOOD.out.versions)
 
         ch_report_in = Channel.empty().mix(
             PGX_CALL.out.calls.map { m, t, j -> [ t, j ] }.flatten(),
@@ -137,6 +138,7 @@ workflow MVA {
             GENOME_QC.out.roh_txt,
             OT_LITERATURE.out.json.map { it[2] },
             OT_TRACTABILITY.out.json.map { it[2] },
+            OT_NEIGHBOURHOOD.out.json,
             Channel.fromList(stage1b)
         ).collect().map { files -> [ sample_meta, files ] }
         // figures are drawn from the same staged inputs, then handed to the renderer alongside them
@@ -173,7 +175,7 @@ workflow MVA {
                          contamination_resource: params.verifybamid2_resource ],
             params   : params.findAll { k, v -> !(v instanceof Map) }
         ]
-        ch_run_meta = Channel.of(JsonOutput.prettyPrint(JsonOutput.toJson(run_meta))).collectFile(name: 'run_meta.json')
+        ch_run_meta = Channel.of(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(run_meta))).collectFile(name: 'run_meta.json')
         def ot_sum = file("${params.outdir}/pgx/open_targets/${params.sample_id}.pgx_ot.summary.json")
         PROVENANCE(ch_sw_versions, ch_run_meta, PGX_CALL.out.report.map { it[1] },
                    ot_sum.exists() ? ot_sum : file("${projectDir}/assets/NO_OT_SUMMARY"))

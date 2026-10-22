@@ -9,6 +9,9 @@ Subcommands
                               molecule and then child molecules are queried; the resolution is recorded,
                               never applied silently.
   target --genes A,B,...      symbol -> Ensembl via mapIds, then target(ensemblId){pharmacogenomics}
+  neighbourhood --genes-tsv F for each gene in a curated TSV: the mitotic-fidelity GO terms it carries
+                              and the action type of every clinical candidate against it. The gene set is
+                              curated; the drugs and their directions are fetched, never asserted.
 
 Only public reference data is requested. No subject data is sent to the API.
 """
@@ -159,6 +162,80 @@ def cmd_target(args):
     return out
 
 
+# the six GO biological-process terms the anti-target rule treats as mitotic fidelity; kept here so the
+# neighbourhood statement and the exclusion rule answer to the same definition
+MITOTIC_GO = {
+    "GO:0007059": "chromosome segregation",
+    "GO:0000070": "mitotic sister chromatid segregation",
+    "GO:0000819": "sister chromatid segregation",
+    "GO:0098813": "nuclear chromosome segregation",
+    "GO:0007094": "mitotic spindle assembly checkpoint signaling",
+    "GO:0007052": "mitotic spindle organization",
+}
+# action types the anti-target rule counts as inhibitory, plus the antisense form, which reduces the
+# gene product just as directly
+INHIBITORY = {"INHIBITOR", "ANTAGONIST", "BLOCKER", "DEGRADER", "DISRUPTING AGENT",
+              "NEGATIVE ALLOSTERIC MODULATOR", "NEGATIVE MODULATOR", "ANTISENSE INHIBITOR"}
+
+NBHD_Q = """query($e: String!) { target(ensemblId: $e) { approvedSymbol
+  geneOntology { aspect term { id } }
+  drugAndClinicalCandidates { count rows { maxClinicalStage
+    drug { id name mechanismsOfAction { rows { actionType targets { approvedSymbol } } } } } } } }"""
+
+
+def cmd_neighbourhood(args):
+    genes = []
+    for line in open(args.genes_tsv):
+        if line.startswith("#") or not line.strip():
+            continue
+        f = line.rstrip("\n").split("\t")
+        if f[0] == "symbol":
+            continue
+        genes.append({"symbol": f[0], "ensembl_id": f[1], "role": f[2] if len(f) > 2 else ""})
+    out = {"source_file": args.genes_tsv.split("/")[-1], "mitotic_go_terms": MITOTIC_GO,
+           "inhibitory_action_types": sorted(INHIBITORY), "genes": []}
+    for g in genes:
+        t = gql(NBHD_Q, {"e": g["ensembl_id"]})["target"]
+        if not t:
+            out["genes"].append({**g, "found": False})
+            continue
+        # a symbol that no longer matches the recorded Ensembl id is reported, never absorbed
+        sym = t.get("approvedSymbol")
+        go = sorted({x["term"]["id"] for x in (t.get("geneOntology") or []) if x["aspect"] == "P"} & set(MITOTIC_GO))
+        dac = t.get("drugAndClinicalCandidates") or {}
+        actions, drugs = {}, []
+        for r in dac.get("rows") or []:
+            d = r.get("drug") or {}
+            for m in ((d.get("mechanismsOfAction") or {}).get("rows") or []):
+                # only mechanism rows that act on THIS gene; a multi-target drug contributes once per
+                # row that names it, and its unrelated rows are not counted here
+                if any((x or {}).get("approvedSymbol") == sym for x in m.get("targets") or []):
+                    at = (m.get("actionType") or "UNSPECIFIED").upper()
+                    actions[at] = actions.get(at, 0) + 1
+                    drugs.append({"name": d.get("name"), "chembl_id": d.get("id"),
+                                  "action_type": at, "max_clinical_stage": r.get("maxClinicalStage")})
+        n = sum(actions.values())
+        out["genes"].append({**g, "found": True, "approved_symbol": sym,
+                             "symbol_matches": sym == g["symbol"],
+                             "mitotic_go": go, "mitotic_go_labels": [MITOTIC_GO[x] for x in go],
+                             "n_clinical_candidates": dac.get("count", 0),
+                             "action_types": actions, "n_mechanism_rows": n,
+                             "n_inhibitory": sum(v for k, v in actions.items() if k in INHIBITORY),
+                             "drugs": drugs})
+    g = [x for x in out["genes"] if x.get("found")]
+    out["summary"] = {
+        "genes": len(g),
+        "genes_with_candidates": sum(1 for x in g if x["n_clinical_candidates"]),
+        "genes_without_candidates": sorted(x["symbol"] for x in g if not x["n_clinical_candidates"]),
+        "genes_without_mitotic_go": sorted(x["symbol"] for x in g if not x["mitotic_go"]),
+        "mechanism_rows": sum(x["n_mechanism_rows"] for x in g),
+        "inhibitory_rows": sum(x["n_inhibitory"] for x in g),
+        "non_inhibitory": [{"gene": x["symbol"], "drug": d["name"], "action_type": d["action_type"]}
+                           for x in g for d in x["drugs"] if d["action_type"] not in INHIBITORY],
+    }
+    return out
+
+
 ap = argparse.ArgumentParser()
 sub = ap.add_subparsers(dest="cmd", required=True)
 sub.add_parser("meta")
@@ -166,10 +243,11 @@ p = sub.add_parser("drug"); p.add_argument("--chembl", required=True)
 p = sub.add_parser("target"); p.add_argument("--genes", required=True)
 p = sub.add_parser("literature"); p.add_argument("--diseases", required=True)
 p = sub.add_parser("tractability"); p.add_argument("--gene", required=True)
+p = sub.add_parser("neighbourhood"); p.add_argument("--genes-tsv", required=True)
 ap.add_argument("--out", required=True)
 args = ap.parse_args()
 res = {"meta": cmd_meta, "drug": cmd_drug, "target": cmd_target, "literature": cmd_literature,
-       "tractability": cmd_tractability}[args.cmd](args)
+       "tractability": cmd_tractability, "neighbourhood": cmd_neighbourhood}[args.cmd](args)
 with open(args.out, "w") as fh:
     json.dump(res, fh, indent=1)
 print(f"{args.cmd}: written {args.out}")

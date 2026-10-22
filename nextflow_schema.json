@@ -516,6 +516,11 @@
                     "default": false,
                     "description": "Skip the report branch"
                 },
+                "report_name": {
+                    "type": "string",
+                    "default": "david-oluwasusi_track2_report",
+                    "description": "Published name of the report files (md/tex/pdf); null keeps <sample>.track2_report.*"
+                },
                 "somalier_sites_url": {
                     "type": "string",
                     "default": "https",
