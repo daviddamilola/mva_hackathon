@@ -248,6 +248,8 @@ write_tsv(a.prefix + ".anti_target.tsv", anti_rows)
 # `order` sets the sequence the report presents axes in: the mechanism-directed axes lead, because the
 # brief scores whether a candidate is supported by the variant mechanism, not merely by plausible biology
 axes = {str(k): {"title": v.get("title"), "role": axis_role(k), "order": v.get("order"),
+                 # an axis whose listing the report moves to its appendix; no effect on any verdict
+                 "supplementary": bool(v.get("supplementary")),
                  "rationale": " ".join((v.get("rationale") or "").split())}
         for k, v in AXES_SPEC.items()}
 repurposing = [r for r in resolved_rows if r["role"] == "repurposing"]

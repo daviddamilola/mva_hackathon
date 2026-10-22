@@ -1,7 +1,11 @@
 {% macro figure(key) -%}
 {% if figs[key] %}
 
-\begin{figure}[htbp]\centering\includegraphics[width=\linewidth{% if key == 'perchrom' %},height=0.85\textheight,keepaspectratio{% endif %}]{ {{- figs[key].path -}} }\caption{ {{- figs[key].label | tex -}} }\label{fig:{{ key }}}\end{figure}
+% [tbp], not [htbp]: with "here" placement LaTeX forces a figure into whatever space is left and
+% the page runs past the bottom margin. Letting figures take the top, bottom or a float page
+% costs a couple of pages and keeps every page inside its text block; the report refers to
+% figures by number, so a figure sitting at the top of the next page still reads correctly.
+\begin{figure}[tbp]\centering\includegraphics[width=\linewidth{% if key == 'perchrom' %},height=0.85\textheight,keepaspectratio{% endif %}]{ {{- figs[key].path -}} }\caption{ {{- figs[key].label | tex -}} }\label{fig:{{ key }}}\end{figure}
 {% endif %}
 {%- endmacro %}
 \documentclass[10pt,a4paper]{article}
@@ -16,6 +20,10 @@
 % Table columns as a fraction of the text width. Fixed cm widths overran the margins and ran
 % adjacent columns together; fractions that sum to 1 cannot.
 \newcolumntype{L}[1]{>{\RaggedRight\arraybackslash}p{\dimexpr #1\linewidth-2\tabcolsep\relax}}
+% \FloatBarrier before every longtable. A longtable fixes its page budget as it emits rows, so a
+% float landing on the same page leaves the output routine assembling more than fits and the page
+% runs past the bottom margin. Flushing pending floats first keeps the budget honest, and it does
+% not change the page count.
 \setlength{\parskip}{0.5em}\setlength{\parindent}{0pt}
 \emergencystretch=2em
 \title{Hypotheses for drug repurposing candidates in mosaic variegated aneuploidy (MVA)}
@@ -23,17 +31,18 @@
 \date{}
 \begin{document}
 \maketitle
-
-\noindent\fcolorbox{black}{yellow!10}{\parbox{\dimexpr\linewidth-2\fboxsep}{\textbf{Research hypothesis, not a treatment recommendation.} Nothing in this report should change the child's care without clinical-grade confirmation and review by their clinical team.}}
+% depth 1 lists the numbered sections and their immediate subsections; the per-context and
+% per-axis headings below that are generated in loops and would make the contents longer than
+% the sections they point at
+\setcounter{tocdepth}{1}
+\tableofcontents
+\clearpage
 
 {% if missing %}
 \textbf{Missing inputs:} {{ missing | join(', ') | tex }}. Sections that depend on them say ``not available''.
 {% endif %}
 
-{% if unmet_rows %}
-\noindent\fcolorbox{black}{gray!8}{\parbox{\dimexpr\linewidth-2\fboxsep}{\textbf{Unmet need, quantified.} The Open Targets literature index ({{ prov.databases.open_targets | tex }}) returns {% for d in unmet_rows %}\textbf{ {{- d.publications -}} } publication{{ 's' if d.publications != 1 }} for {{ d.name | tex }} (\texttt{ {{- d.id | tex -}} }){{ '; ' if not loop.last }}{% endfor %}. That is the evidence base this report is written against, and the reason the approach here is mechanism-led: there is no trial literature to lead with.}}
-
-{% endif %}\section{Summary}
+\section{Summary}
 \begin{itemize}
 {% if domain_map and truncating %}
 {% for v in truncating %}
@@ -41,15 +50,12 @@
 {% endfor %}
 {% endif %}
 {% if tract and tract.found %}
-\item \textbf{Why repurposing, not targeting.} {{ tract.gene | tex }} is {% if tract.is_essential %}essential{% endif %} and has no approved, advanced-clinical or Phase 1 candidate in any modality. The only modality with positive evidence beyond ligandability is protein \textbf{degradation} --- the inverse of what a loss-of-function disease needs. Every drugged node in the surrounding mitotic machinery is an inhibitor of a mitotic-fidelity gene, so the pipeline encodes the exclusion as a rule and reports what it rejects.
+\item \textbf{Why repurposing, not targeting.} {{ tract.gene | tex }} is {% if tract.is_essential %}essential{% endif %} and has no approved, advanced-clinical or Phase 1 candidate in any modality. The only modality with positive evidence beyond ligandability is protein \textbf{degradation}. This is the inverse of what a loss-of-function disease needs. Every drugged node in the surrounding mitotic machinery is an inhibitor of a mitotic-fidelity gene, so the pipeline encodes the exclusion as a rule and reports what it rejects.
 {% endif %}
 {% if ot_status in ('reported', 'example') and ot_counts %}
-\item \textbf{Repurposing candidates.} {% if ot_by_axis %}{{ ot_n_repurposing }} approved medicines across {{ ot_by_axis | length }} axes. The two mechanism-led axes come first: readthrough of the nonsense allele paired with NMD inhibition, then proteostasis support for the cost of aneuploidy. The tumour-directed candidates follow, and are all tier 3 because they need a tumour genotype that germline sequencing cannot provide. \textbf{ {{- ot_counts.excluded_by_anti_target }} were excluded by the anti-target rule}. Investigational agents are named where they are relevant but are not counted: the list counts approved medicines only.{% else %}none on this drug list yet; the Track 2 candidate set has still to be supplied.{% endif %}
-{% if ot_by_axis %}
-\item \textbf{A finding about therapy already given.} The germline checkpoint defect plausibly reduces vincristine's efficacy while leaving its neuropathy risk untouched. That is a consideration for the treating team, not a candidate and not a recommendation; Section~\ref{sec:stage1b} gives the argument and its limits.
-{% endif %}
+\item \textbf{Repurposing candidates.} {% if ot_by_axis %}{{ ot_n_repurposing }} approved medicines across {{ ot_by_axis | length }} axes. The two mechanism-led axes come first: readthrough of the nonsense allele paired with NMD inhibition, then proteostasis support for the cost of aneuploidy. The tumour-directed candidates follow, and all tumour-directed candidates are tier 3 because they need a tumour genotype that germline sequencing cannot provide. \textbf{ {{- ot_counts.excluded_by_anti_target }} were excluded by the anti-target rule}. Investigational agents are named where they are relevant but are not counted: the list counts approved medicines only.{% else %}none on this drug list yet; the Track 2 candidate set has still to be supplied.{% endif %}
 {% if ot_regimen %}
-\item \textbf{Current regimen annotated.} {{ ot_n_regimen }} standard-regimen agents were checked against this child's pharmacogenotypes through Open Targets (ClinPGx), each queried whatever the anti-target rule said{% if ot_counts.regimen_anti_target_hits %}. {{ ot_counts.regimen_anti_target_hits }} of them act against mitotic fidelity, which is recorded as a therapy-related risk, not as an exclusion{% endif %}.
+\item \textbf{Standard regimen annotated.} {{ ot_n_regimen }} agents of the standard rhabdomyosarcoma regimen --- the released record does not say which protocol the child is on, or whether treatment is ongoing --- were checked against this child's pharmacogenotypes through Open Targets (ClinPGx), each queried whatever the anti-target rule said{% if ot_counts.regimen_anti_target_hits %}. {{ ot_counts.regimen_anti_target_hits }} of them act against mitotic fidelity, which is recorded as a therapy-related risk, not as an exclusion{% endif %}.
 {% endif %}
 {% else %}
 \item \textbf{Candidate repurposing hypotheses:} not yet run. The mechanism, the anti-target rule and the join are in place; the candidate list has still to be supplied (\texttt{-{}-drug\_list\_file}).
@@ -58,13 +64,6 @@
 {% if counterfactual and counterfactual.applicable %}{% for g, v in counterfactual.genes.items() %}
 \item \textbf{ {{- g | tex }} copy number changed the phenotype call:} \texttt{ {{- v.observed.diplotype | tex -}} }, {{ v.observed.phenotype | tex }} (activity {{ v.observed.activity_score | tex }}). Without copy-number detection, the call would be \texttt{ {{- v.counterfactual.diplotype | tex -}} }, {{ v.counterfactual.phenotype | tex }} (activity {{ v.counterfactual.activity_score | tex }}), and {{ counterfactual.flagged_counterfactual - counterfactual.flagged_observed }} more {{ g | tex }}-dependent CPIC/DPWG annotations would carry dose-adjustment or alternative-drug flags that are not indicated.
 {% endfor %}{% endif %}
-{% if pgx_literature %}
-{% for x in pgx_literature %}
-\item \textbf{ {{- x.label | tex }} --- {{ x.context | lower | tex -}} .} {{ x.literature[-1].statement | tex }} Cited: ({% for l in x.literature if l.pmid %}{{ cite_pmid(l.pmid, l.citation, true) | tex }}{{ '; ' if not loop.last }}{% endfor %}). No CPIC or DPWG guideline covers this drug-gene pair, so it carries no guideline flag.
-{% endfor %}
-{% endif %}
-\item \textbf{Pharmacogenomic context --- reportable negatives in drug classes this child is likely to meet:} {{ (pgx_negatives | join('; ')) | tex if pgx_negatives else 'none' }}.
-\item \textbf{Pharmacogenomic context --- flags in those classes:} {{ (pgx_flagged | join('; ')) | tex if pgx_flagged else 'none' }}. {{ pgx_rows | length }} genes profiled; PharmCAT vs Aldy: {% for k, v in pgx_summary.agreement_counts.items() %}{{ v }} {{ k | tex }}{{ ", " if not loop.last }}{% endfor %}; disagreements: {{ (pgx_summary.disagreements | join(', ')) | tex if pgx_summary.disagreements else 'none' }}.
 {% else %}
 \item \textbf{Pharmacogenomics:} not available.
 {% endif %}
@@ -87,19 +86,21 @@
 \end{itemize}
 
 \subsection*{How this report addresses the scoring criteria}
+\FloatBarrier
+\noindent{\small\emph{Table {{ tnum() }}. How this report addresses the scoring criteria.}}\nopagebreak[4]
 \begin{small}
 \begin{longtable}{L{0.14}L{0.19}L{0.67}}
 \toprule Criterion & Where it is addressed & What it rests on \\ \midrule \endhead
 Scientific rigor & Sections~\ref{sec:mechanism}, \ref{sec:readthrough} & The stop codon, the nonsense-mediated-decay status and the readthrough products are computed from this genome, and each is checked against an independent source. The two leading candidate axes follow from that mechanism; the tumour-directed candidates are tiered lower because they rest on tumour biology this data cannot show. \\
-Potential impact & Sections~\ref{sec:readthrough}, \ref{sec:reach}, \ref{sec:pgx} & For this child: a pharmacogenomic layer with the aminoglycoside gate resolved, and one finding that bears on therapy already being given. For others: the readthrough axis applies to any MVA1 patient carrying a nonsense allele, and most pathogenic alleles in this gene are of that kind. The aneuploidy result is a bounded negative, reported with the detection limit of every arm tested. \\
-Innovation & Sections~\ref{sec:readthrough}, \ref{sec:stage1b}, \ref{sec:pgx} & Each near-cognate readthrough product carries its own AlphaMissense score. The drug list defines the pharmacogene panel instead of a fixed gene set. The copy-number counterfactual shows a phenotype call turning on method. The anti-target rule is written as code that reports what it rejects, and the vincristine asymmetry turns the mechanism back onto the current regimen. \\
+Potential impact & Sections~\ref{sec:readthrough}, \ref{sec:reach}, \ref{sec:stage1b} & For this child: a pharmacogenomic layer with the aminoglycoside gate resolved, and one finding that bears on standard-regimen therapy. For others: the readthrough axis applies to any MVA1 patient carrying a nonsense allele, and most pathogenic alleles in this gene are of that kind. The aneuploidy result is a bounded negative, reported with the detection limit of every arm tested. \\
+Innovation & Sections~\ref{sec:readthrough}, \ref{sec:stage1b}, \ref{sec:pgx} & Each near-cognate readthrough product carries its own AlphaMissense score. The drug list defines the pharmacogene panel instead of a fixed gene set. The copy-number counterfactual shows a phenotype call turning on method. The anti-target rule is written as code that reports what it rejects, and the vincristine asymmetry turns the mechanism back onto the standard regimen. \\
 Scalability & Methods & Every step is a Nextflow process with pinned versions and a stub profile, runnable on another sample with one command. The readthrough method is disease-agnostic: characterise the stop codon and its context, predict and score the near-cognate products, gate aminoglycosides on MT-RNR1, flag phenotype-dependent cautions. \\
 \bottomrule
 \end{longtable}
 \end{small}
 
 \section{Methods}
-{% filter tex %}{% include 'methods.j2' %}{% endfilter %}
+{% filter mdbold %}{% filter tex %}{% include 'methods.j2' %}{% endfilter %}{% endfilter %}
 
 \section{Results}
 \subsection{Variant mechanism}\label{sec:mechanism}
@@ -108,10 +109,10 @@ Scalability & Methods & Every step is a Nextflow process with pinned versions an
 \textbf{ {{- v.hgvsp | tex -}} } ({{ v.consequence | tex }}, {{ v.zygosity | tex }}) truncates {{ domain_map.protein | tex }} at residue {{ v.position }} of {{ domain_map.length }}. Domains complete in the truncated protein: {{ (v.retained_domains | join(', ')) | tex if v.retained_domains else 'none' }}. Domains lost: \textbf{ {{- (v.lost_domains | join(', ')) | tex -}} }.
 {% endfor %}
 {% for v in nontruncating %}
-\textbf{ {{- v.hgvsp | tex -}} } ({{ v.consequence | tex }}, {{ v.zygosity | tex }}) falls at residue {{ v.position }}, inside {{ (v.in_domains | join(', ')) | tex if v.in_domains else 'no annotated domain' }}.
+\textbf{ {{- v.hgvsp | tex -}} } ({{ v.consequence | tex }}, {{ v.zygosity | tex }}) falls at residue {{ v.position }}, inside {{ (v.in_domains | join(', ')) | tex if v.in_domains else 'no annotated domain' }}.{% for r in modrf if r.gene == domain_map.gene and v.hgvsp in r.hgvsp %} Evidence for this allele: {% if r.clinvar_significance %}ClinVar {{ r.clinvar_significance | tex }}{% else %}no ClinVar record{% endif %}; gnomAD joint AF {{ r.gnomad_af_joint | tex if r.gnomad_af_joint else 'absent' }}; AlphaMissense {{ r.alphamissense_score }} ({{ r.alphamissense_class | tex }}).{% endfor %}{{ '' }}
 {% endfor %}
 
-The two alleles therefore converge on the same module: one truncates before the kinase domain begins, the other sits inside it. That is a sharper statement than ``one null allele and one hypomorph''. The domain boundaries come from {{ domain_map.domain_source | cite | tex }} and the variant positions from this run's own panel output. {% if figs.domains %}Figure~\ref{fig:domains} draws the two variants on the domain map, which is where that statement comes from.{% endif %}
+The two alleles therefore converge on the same module: one truncates before the kinase domain begins, the other sits inside it. That is a sharper statement than ``one null allele and one hypomorph''. Throughout, the two variants are taken to be in trans, one on each allele; that configuration is inferred rather than demonstrated, and the Limitations state why this data cannot phase the pair and what supports the inference. What the missense allele does is likewise not measured here: no ACMG classification was performed, and ``hypomorph'' --- the premise the proteostasis axis and the residual-function inference act on --- rests on the diagnosis, the canonical MVA1 genotype of one truncating and one missense allele {{ cite('[@suijkerbuijk2010]') | tex }}, the allele's rarity and its AlphaMissense score, not on a functional assay. The domain boundaries come from {{ domain_map.domain_source | cite | tex }} and the variant positions from this run's own panel output. {% if figs.domains %}Figure~\ref{fig:domains} draws the two variants on the domain map, which is where that statement comes from.{% endif %}
 
 {{ figure('domains') }}
 {% if rt %}
@@ -124,21 +125,29 @@ A nonsense allele is a readthrough target only if three things hold. Each is com
 
 \textbf{What protein.} Readthrough does not restore the reference residue. Near-cognate decoding at {{ rt.stop_codon | tex }} inserts Trp, Arg or Cys {{ cite('[@ng2021]') | tex }}, so a readthrough agent would produce one of three specific full-length proteins rather than the wild-type one. AlphaMissense scores each of them, and Figure~\ref{fig:readthrough_products} places them among every other substitution the residue could carry:
 
+% tabular, not longtable: there are three near-cognate products, so the table never breaks across
+% pages, and a longtable sharing a page with floats makes the output routine overfill it (the two
+% figures in this subsection sat with it on one page and pushed ~148pt past the bottom margin)
+\noindent{\small\emph{Table {{ tnum() }}. AlphaMissense scores for the three near-cognate products a readthrough agent would insert.}}\nopagebreak[4]
 \begin{small}
-\begin{longtable}{L{0.4}L{0.3}L{0.3}}
-\toprule Readthrough product & AlphaMissense & Class \\ \midrule \endhead
+\begin{tabular}{L{0.4}L{0.3}L{0.3}}
+\toprule Readthrough product & AlphaMissense & Class \\ \midrule
 {% for p in rt.readthrough_products %}
 {{ p.label | tex }} & {{ p.alphamissense }} & {{ p.class | tex }} \\
 {% endfor %}
 \bottomrule
-\end{longtable}
+\end{tabular}
 \end{small}
 
 {{ figure('readthrough_products') }}
 
-Verdict: \textbf{ {{- rt.verdict | tex -}} }. The residue is tolerant more broadly, which is the stronger claim: of the {{ rt.residue_tolerance.n_substitutions_scored }} substitutions AlphaMissense scores at this position, {{ rt.residue_tolerance.n_benign }} are benign, {{ rt.residue_tolerance.n_ambiguous }} ambiguous and {{ rt.residue_tolerance.n_pathogenic }} pathogenic, with a mean of {{ rt.residue_tolerance.mean_score }} against {{ rt.regional_means['whole protein'] }} for the protein as a whole. The position sits in the {{ rt.residue_region | tex }}, not inside a folded domain. So the predicted readthrough product is a full-length protein carrying a tolerated substitution at a tolerant position between two domains.
+Verdict: \textbf{ {{- rt.verdict | tex -}} }. The residue is tolerant more broadly; of the {{ rt.residue_tolerance.n_substitutions_scored }} substitutions AlphaMissense scores at this position, {{ rt.residue_tolerance.n_benign }} are benign, {{ rt.residue_tolerance.n_ambiguous }} ambiguous and {{ rt.residue_tolerance.n_pathogenic }} pathogenic, with a mean of {{ rt.residue_tolerance.mean_score }} against {{ rt.regional_means['whole protein'] }} for the protein as a whole. The position sits in the {{ rt.residue_region | tex }}, not inside a folded domain. So the predicted readthrough product is a full-length protein carrying a tolerated substitution at a tolerant position between two domains.
 
-\textbf{Why the combination, not readthrough alone.} The premature stop lies {{ rt.nmd_distance_to_last_junction_nt }} nt upstream of the last exon--exon junction, in exon {{ rt.ptc_exon | tex }}, and is therefore {{ rt.nmd_verdict | tex }}. That is the reason to pair a readthrough agent with nonsense-mediated-decay inhibition, not an argument against the axis: most of the transcript is degraded before it is translated, so a readthrough agent acts on a depleted substrate. The pharmacology is the weak point. No NMD inhibitor is approved; amlexanox is the only approved compound with NMD-inhibition literature and that literature is thin {{ cite('[@atanasova2017]') | tex }}{{ cite('[@benslimane2023]') | tex }}.
+\textbf{Why the combination, not readthrough alone.} The premature stop lies {{ rt.nmd_distance_to_last_junction_nt }} nt upstream of the last exon--exon junction, in exon {{ rt.ptc_exon | tex }}, and is therefore {{ rt.nmd_verdict | tex }}. That is the reason to pair a readthrough agent with nonsense-mediated-decay inhibition, not an argument against the axis: most of the transcript is degraded before it is translated, so a readthrough agent acts on a depleted substrate. The pharmacology is the weak point, though not in the way a flat ``no NMD inhibitor exists'' would suggest. No drug has been developed or approved \emph{for} NMD inhibition, so no agent carries it as an intended, dose-characterised mechanism. A systematic profiling of FDA-approved drugs for NMD modulation found most have unremarkable effects {{ cite('[@zhao2022]') | tex }}; the ones that do inhibit it do so off-target. They are amlexanox, the agent carried on this axis, where the literature is thin {{ cite('[@atanasova2017]') | tex }}{{ cite('[@benslimane2023]') | tex }}; the cardiac glycosides, from a cell-based screen, acting through Na+/K+-ATPase inhibition and raised intracellular calcium {{ cite('[@nickless2014]') | tex }}; 5-azacytidine, at concentrations reported to match levels reached in patients {{ cite('[@bhuvanagiri2014]') | tex }}; and homoharringtonine, the single consistent hit in that FDA-wide screen {{ cite('[@zhao2022]') | tex }}. The pairing itself is not hypothetical: an NMD inhibitor combined with a readthrough agent raised protein from the mutant transcript in patient-derived cells for another nonsense disorder {{ cite('[@amarschwartz2023]') | tex }}. What bounds it is this child. 5-azacytidine and homoharringtonine are myelosuppressive anticancer drugs, and adding either to a regimen this report already flags for therapy-related myeloid neoplasia risk in a chromosomal instability syndrome is the wrong direction; the cardiac glycosides are renally cleared with a narrow therapeutic index against a background of nephrocalcinosis, alongside an anthracycline. Underneath all of them sits a mechanism-level concern: NMD is a surveillance pathway with tumour-suppressive roles, and every one of those agents suppresses it globally, which in a cancer-predisposition syndrome is a risk that no choice among them removes. None was carried as a candidate, and Section~\ref{sec:limitations} says so.
+
+\textbf{The modality the mechanism points to, outside the approved list.} That specificity problem has a published solution. Gene-specific antisense inhibition of NMD uses oligonucleotides that block exon-junction-complex deposition downstream of a premature stop, attenuating decay of one transcript while leaving NMD intact everywhere else {{ cite('[@nomakuchi2016]') | tex }}, and it was combined with a readthrough compound in that first report to restore full-length protein from a nonsense allele --- the exact pairing this axis needs. It has since been developed toward the clinic for the CFTR W1282X allele, where a cocktail of three such oligonucleotides raised mutant CFTR mRNA, protein and chloride current in human bronchial epithelial cells {{ cite('[@kim2022]') | tex }}.
+
+The design inputs for this child are from the analysis above: the premature stop sits in exon {{ rt.ptc_exon | tex if rt else '' }} with {{ nmd.ptcs[0].exons_downstream_of_ptc if nmd and nmd.ptcs else '' }} exons downstream of it, and those downstream junctions are the candidate target sites. What this approach does not solve is delivery. Oligonucleotide biodistribution is tissue-restricted, the cystic fibrosis work targeted an epithelium that inhaled delivery reaches, and which tissue to target in a disorder of every dividing cell is unresolved. It is not an approved medicine and is therefore not a candidate here; it is recorded because it is the one strategy whose stated rationale matches this report's own objection to the systemic agents.
 
 Whether the small percentage of full-length protein that readthrough typically restores would cross the phenotypic threshold is unknown, and the conditional framing in the residual-function paragraph above applies unchanged {{ cite('[@simmons2019]') | tex }}.
 {% endif %}
@@ -156,6 +165,8 @@ Domain mapping not available.
 {% if nmd_ptcs %}
 \textbf{Nonsense-mediated decay.} Whether the truncating allele produces a shortened protein or no protein at all decides what a readthrough strategy could act on.
 
+\FloatBarrier
+\noindent{\small\emph{Table {{ tnum() }}. Nonsense-mediated decay prediction for the premature stop, with the distances it rests on.}}\nopagebreak[4]
 \begin{small}
 \begin{longtable}{L{0.216}L{0.081}L{0.135}L{0.149}L{0.095}L{0.095}L{0.229}}
 \toprule Variant & PTC exon & PTC (cDNA) & Last junction & Distance & Exons after & Verdict \\ \midrule \endhead
@@ -170,7 +181,7 @@ Rule applied: a PTC more than {{ nmd.rules.last_junction_nt }} nt upstream of th
 {% endif %}
 
 {% if consanguinity_excluded %}
-\textbf{Recurrent parental pregnancy loss is consistent with biallelic lethality.} Recurrent spontaneous abortion (HP:0200067) is among the released features. Runs of homozygosity give $F_{ROH}$($\geq$1.5 Mb) = {{ roh_f }}, so the parents are not detectably related, and each pregnancy of two unrelated carriers has a 25\% chance of being biallelic. Complete knockout in mouse is embryonic-lethal with complete penetrance, between implantation and placentation. If biallelic loss is lethal in humans too, recurrent early pregnancy loss is the predicted consequence, and it is what the family history records. This is independent human evidence, from this child's own family, for the premise the whole null-plus-hypomorph argument rests on. It is consistent with that premise rather than proof of it: recurrent miscarriage is common and has many causes, and no products of conception were genotyped.
+\textbf{Recurrent parental pregnancy loss is consistent with biallelic lethality.} Recurrent spontaneous abortion (HP:0200067) is among the released features. The argument rests on a premise this data cannot verify: that each parent carries one of the two variants. No parental genotypes were released, and either variant could be de novo, in which case the computation below does not apply and the consistency that follows is coincidence. Granting inheritance: runs of homozygosity give $F_{ROH}$($\geq$1.5 Mb) = {{ roh_f }}, so the parents are not detectably related, and each pregnancy of two unrelated carriers has a 25\% chance of being biallelic. Complete knockout in mouse is embryonic-lethal with complete penetrance, between implantation and placentation. If biallelic loss is lethal in humans too, recurrent early pregnancy loss is the predicted consequence, and it is what the family history records. Under the carrier-parents premise, that is human evidence, from this child's own family, for the premise the whole null-plus-hypomorph argument rests on. It is consistent with those premises rather than proof of either: recurrent miscarriage is common and has many causes, no products of conception were genotyped, and the parents were not genotyped.
 {% endif %}
 
 \textbf{Residual function: a conditional inference.} {{ cite('[@+simmons2019]') }} report that nearly complete loss of BubR1 is required for microcephaly. Microcephaly is not among the features released to participants. \textbf{If} it is genuinely absent rather than unreported or unassessed, that would imply the missense allele retains meaningful activity, and strategies acting on residual protein would be acting on a partially functional system. The antecedent is not established here and is not asserted, under the feature-absence rule. Two further cautions apply --- microcephaly is reported in 87\% of MVA1 cases but is explicitly not required for the diagnosis {{ cite('[@callier2005]') }}, and this child is young, so a head-circumference trajectory may not be complete. The inference is recorded because it would matter if resolved, not because it is resolved.
@@ -179,6 +190,8 @@ Rule applied: a PTC more than {{ nmd.rules.last_junction_nt }} nt upstream of th
 {% if tract and tract.found %}
 \textbf{The causal gene cannot be drugged directly.} Open Targets records {{ tract.gene | tex }} as {% if tract.is_essential %}an \textbf{essential} gene{% else %}not essential{% endif %}, and no modality has reached the clinic against it:
 
+\FloatBarrier
+\noindent{\small\emph{Table {{ tnum() }}. Open Targets tractability evidence for {{ tract.gene | tex if tract else 'the causal gene' }}, by modality.}}\nopagebreak[4]
 \begin{small}
 \begin{longtable}{L{0.211}L{0.303}L{0.486}}
 \toprule Modality & Tractability evidence present & Absent \\ \midrule \endhead
@@ -192,7 +205,26 @@ Rule applied: a PTC more than {{ nmd.rules.last_junction_nt }} nt upstream of th
 There is no approved drug, no advanced clinical candidate and no Phase 1 candidate against {{ tract.gene | tex }} in any modality. Small-molecule tractability is not zero --- {{ tract.gene | tex }} is flagged as a druggable family with a high-quality ligand --- but it has no structure with a ligand and no high- or medium-quality pocket recorded, and nothing has been carried forward. The one modality with positive evidence beyond ligandability is the \textbf{degrader} axis, and that points the wrong way: this disease is loss of protein function, so a molecule that removes the remaining protein is the opposite of what is wanted. Direct targeting is therefore off the table. Every candidate axis below acts on something other than {{ tract.gene | tex }}: restoring protein from the nonsense allele, or reducing the downstream cost of the aneuploidy that its loss produces.
 {% endif %}
 
-\textbf{The drugged neighbourhood runs the same way.} Every drugged node around BubR1 in the mitotic machinery --- PLK1, AURKB, CDK1, TTK, KIF11, TOP2A, CENP-E, BIRC5 --- is the target of \textbf{inhibitors}, developed to \emph{reduce} mitotic fidelity in dividing tumour cells. This disorder is a loss of mitotic fidelity. Almost every drug that exists near this pathway would deepen the defect rather than compensate for it.
+\textbf{The drugged neighbourhood runs the same way.}{% if nbhd_sum and nbhd_sum.genes %} To put a number on that rather than assert it, a curated set of {{ nbhd_sum.genes }} drugged nodes of the mitotic machinery ({{ (nbhd.genes | map(attribute='symbol') | join(', ')) | tex }}; the set and its rationale are a repository asset) was queried against {{ db('open_targets') | tex }}: every clinical candidate recorded against each gene, and what that candidate does to it. {{ nbhd_sum.genes_with_candidates }} of the {{ nbhd_sum.genes }} have at least one clinical candidate, and across them \textbf{ {{- nbhd_sum.inhibitory_rows }} of {{ nbhd_sum.mechanism_rows }} mechanism-of-action records are inhibitory}{% if nbhd_sum.non_inhibitory %} --- the {{ nbhd_sum.non_inhibitory | length }} exception{{ 's are' if nbhd_sum.non_inhibitory | length != 1 else ' is' }} {% for x in nbhd_sum.non_inhibitory %}a {{ x.gene | tex }} {{ x.action_type | lower | tex }} ({{ x.drug | lower | tex }}){{ ', ' if not loop.last }}{% endfor %}{% endif %}.
+
+\FloatBarrier
+\noindent{\small\emph{Table {{ tnum() }}. Drugs recorded against a curated set of mitotic-machinery targets, and what each does to its target.}}\nopagebreak[4]
+\begin{small}
+\begin{longtable}{L{0.13}L{0.26}L{0.21}L{0.21}L{0.13}}
+\toprule
+\textbf{Gene} & \textbf{Mitotic-fidelity GO terms} & \textbf{Clinical candidates} & \textbf{Mechanism records} & \textbf{Inhibitory} \\
+\midrule
+\endhead
+{% for g in nbhd.genes %}
+{{ g.symbol | tex }} & {{ g.mitotic_go | length }} & {{ g.n_clinical_candidates }} & {{ g.n_mechanism_rows }} & {{ g.n_inhibitory }} \\
+{% endfor %}
+\bottomrule
+\end{longtable}
+\end{small}
+
+Two results in that table are worth stating because they qualify the claim rather than support it.{% if nbhd_sum.genes_without_candidates %} {{ (nbhd_sum.genes_without_candidates | join(', ')) | tex }} carr{{ 'ies' if nbhd_sum.genes_without_candidates | length == 1 else 'y' }} no clinical candidate at all in this release, so {{ 'it is' if nbhd_sum.genes_without_candidates | length == 1 else 'they are' }} part of the mitotic machinery that the field has not drugged.{% endif %}{% if nbhd_sum.genes_without_mitotic_go %} And {{ (nbhd_sum.genes_without_mitotic_go | join(', ')) | tex }} carr{{ 'ies' if nbhd_sum.genes_without_mitotic_go | length == 1 else 'y' }} none of the six GO terms this report's anti-target rule treats as mitotic fidelity, so an inhibitor of {{ 'it' if nbhd_sum.genes_without_mitotic_go | length == 1 else 'them' }} would pass that rule. The rule follows the ontology, and the ontology does not annotate every mitotic protein the same way; that is a limit of the rule, found by computing this table rather than by assuming it.{% endif %}{% else %} Every drugged node around BubR1 in the mitotic machinery is the target of \textbf{inhibitors}, developed to \emph{reduce} mitotic fidelity in dividing tumour cells.{% endif %}{{ '' }}
+
+This disorder is a loss of mitotic fidelity. Almost every drug that exists near this pathway would deepen the defect rather than compensate for it.
 
 That asymmetry is the central problem of Track 2 for this gene, and it is why the pipeline encodes it as a rule rather than as a warning: \emph{an inhibitor of a mitotic-fidelity gene is contraindicated in a mitotic-fidelity disorder.} Candidates are tested against it automatically, and the ones it rejects are listed below rather than dropped silently.
 
@@ -214,13 +246,15 @@ Drug list \texttt{ {{- ot_sum.drug_list.label | tex -}} }{% if ot_status == 'exa
 {% if ot_counts %}
 How the list was resolved, filtered and joined:
 
+\FloatBarrier
+\noindent{\small\emph{Table {{ tnum() }}. Candidate resolution, anti-target filtering and the pharmacogenomic join, step by step.}}\nopagebreak[4]
 \begin{small}
 \begin{longtable}{L{0.72}L{0.28}}
 \toprule Step & Count \\ \midrule \endhead
 Entries on the list & {{ ot_counts.candidates }} \\
 {% if ot_regimen %}
 \quad of which repurposing candidates & {{ ot_n_repurposing }} \\
-\quad of which agents of the current regimen & {{ ot_n_regimen }} \\
+\quad of which agents of the standard regimen & {{ ot_n_regimen }} \\
 {% endif %}
 Resolved to a ChEMBL ID through the Open Targets search API & {{ ot_counts.resolved }} \\
 {% if ot_counts.ambiguous %}
@@ -242,14 +276,36 @@ Rows below the asserted levels, counted and carried no further & {{ ot_sum.rows_
 \end{longtable}
 \end{small}
 
-Only evidence levels {{ ot_sum.asserted_levels | join(', ') | tex }} are asserted. ``Not assessable'' means Open Targets holds no mechanism-of-action record for that drug, so the anti-target rule could not be evaluated for it; the rule was evaluated for the rest and excluded {{ ot_counts.excluded_by_anti_target }}.
+\textbf{The evidence scale used throughout this section.} Every annotation carries a ClinPGx clinical annotation level of evidence, the scale ClinPGx (formerly PharmGKB) assigns to a variant--drug association {{ cite('[@whirlcarrillo2021]') | tex }}:
+
+\FloatBarrier
+\noindent{\small\emph{Table {{ tnum() }}. ClinPGx clinical annotation levels of evidence, and which are asserted here.}}\nopagebreak[4]
+\begin{small}
+\begin{longtable}{L{0.08}L{0.88}}
+\toprule
+\textbf{Level} & \textbf{What it means} \\
+\midrule
+\endhead
+\textbf{1A} & The association is in a CPIC or professional-society guideline, or carries variant-specific FDA label guidance \\
+\textbf{1B} & Replicated, statistically significant evidence, but not yet in a guideline or label \\
+\textbf{2A} & Moderate, replicated evidence, in a gene ClinPGx designates a very important pharmacogene \\
+\textbf{2B} & Moderate evidence: replicated, but with non-significant studies among them or a small effect size \\
+\textbf{3} & A single unreplicated study, or multiple studies without clear evidence of an association \\
+\textbf{4} & Case reports, non-significant studies, or in vitro and functional evidence only \\
+\bottomrule
+\end{longtable}
+\end{small}
+
+Only levels {{ ot_sum.asserted_levels | join(' and ') | tex }} are asserted here: a verdict in the tables below rests on nothing weaker. Rows at every other level are counted per drug, and the genes behind level-2 rows are named, so the effect of a lower threshold is visible rather than hidden --- but no claim in this report rests on them.
+
+``Not assessable'' means Open Targets holds no mechanism-of-action record for that drug, so the anti-target rule could not be evaluated for it; the rule was evaluated for the rest and excluded {{ ot_counts.excluded_by_anti_target }}.
 {% endif %}
 {% if not ot_by_axis %}
 
 No repurposing candidates are on this list. The mechanism, the anti-target rule and the join are in place; the Track 2 candidate set has still to be supplied.
 {% endif %}
 
-{% for grp in ot_support_groups %}
+{% for grp in ot_groups_main %}
 \subsubsection*{ {{- grp.heading | tex -}} }
 {{ grp.blurb | tex }}
 
@@ -263,6 +319,8 @@ No repurposing candidates are on this list. The mechanism, the anti-target rule 
 {% endfor %}
 \end{itemize}
 
+\FloatBarrier
+\noindent{\small\emph{Table {{ tnum() }}. Pharmacogenomic verdicts for the candidates on axis {{ ax.axis }}.}}\nopagebreak[4]
 \begin{small}
 \begin{longtable}{L{0.15}L{0.04}L{0.11}L{0.08}L{0.20}L{0.15}L{0.05}L{0.08}L{0.14}}
 \toprule Drug & Tier & Support & Gene & Called & Matched OT allele & Level & Flag & Basis \\ \midrule \endhead
@@ -295,6 +353,8 @@ These axes carry candidates whose support level was not recorded, so they are sh
 {% endfor %}
 \end{itemize}
 
+\FloatBarrier
+\noindent{\small\emph{Table {{ tnum() }}. Pharmacogenomic verdicts for candidates on axes with no recorded support level.}}\nopagebreak[4]
 \begin{small}
 \begin{longtable}{L{0.15}L{0.04}L{0.11}L{0.08}L{0.20}L{0.15}L{0.05}L{0.08}L{0.14}}
 \toprule Drug & Tier & Support & Gene & Called & Matched OT allele & Level & Flag & Basis \\ \midrule \endhead
@@ -313,9 +373,356 @@ These axes carry candidates whose support level was not recorded, so they are sh
 
 {% endfor %}
 {% endif %}
-{% if ot_regimen %}
-\subsubsection*{Treatment the child is already receiving}
-{% for ax in ot_regimen %}
+{% if ot_groups_supp or ot_regimen_supp %}
+\subsubsection*{Axes reported in the appendix}
+{% if ot_groups_supp %}The tumour-directed candidates ({{ ot_supp_stats.drugs }} medicines) treat the malignancy the syndrome produced rather than the {{ domain_map.gene | tex if domain_map else 'causal gene' }} mechanism, and every one of them is tier 3 for the same reason: each is selected on a feature of the tumour's own genotype --- fusion status, copy number, homologous-recombination status, aneuploidy score --- that germline sequencing cannot supply. They were resolved, filtered by the anti-target rule and joined to this child's pharmacogenotypes like every other candidate; the listing, the verdicts and the per-candidate table of the tumour results that would make each assessable are in Section~\ref{sec:tumourdirected}. {% endif %}{% if ot_regimen_supp %}The {{ ot_supp_stats.regimen_drugs }} agents of the standard rhabdomyosarcoma regimen are not candidates at all --- they are the therapy itself, queried for pharmacogenomic annotation regardless of the anti-target rule. Their listing and verdicts are in Section~\ref{sec:regimenlisting}. What the mechanism implies for that therapy is a finding rather than a listing, and stays below.{% endif %}
+{% endif %}
+
+\subsubsection*{What the mechanism implies for standard-regimen therapy}
+This is a mechanism finding, not a repurposing candidate, and it bears on therapy given under standard rhabdomyosarcoma protocols --- which protocol this child is on, and whether treatment is ongoing, the released record does not say. It is a consideration for the treating team. It is \textbf{not} a recommendation to alter a rhabdomyosarcoma protocol, and nothing here licenses withdrawing therapy given with curative intent.
+
+\textbf{The vincristine asymmetry.} Vincristine kills by disrupting the spindle so that the spindle assembly checkpoint holds the cell in mitosis until it dies there. A cell with a weakened checkpoint does not arrest; it slips through mitosis and survives. That is a documented resistance mechanism for antimitotic drugs: checkpoint-compromised cells are less sensitive to paclitaxel {{ cite('[@sudo2004]') | tex }} and to microtubule-targeted drugs generally {{ cite('[@lee2004]') | tex }}, mitotic slippage is the established route to that resistance {{ cite('[@cheng2017]') | tex }}, and the one report specific to this protein runs the same way in reverse: BubR1 is repressed in acute myeloid leukaemia, and restoring it re-sensitises the cells to antimitotic therapy {{ cite('[@schnerch2013]') | tex }}.
+
+This child's checkpoint defect is germline, so it is present in the tumour as well as in normal tissue. Two consequences follow, both stated as hypotheses:
+\begin{enumerate}
+\item \textbf{Efficacy.} The tumour may be intrinsically less sensitive to vincristine's cytotoxic mechanism than a checkpoint-competent tumour of the same histology.
+\item \textbf{Toxicity.} Vincristine's dose-limiting toxicity is peripheral neuropathy, which acts through axonal microtubule transport in post-mitotic neurons. That mechanism does not involve the checkpoint, so it is not reduced by the defect. This child is additionally a CYP3A5 non-expresser, the higher-neuropathy-risk genotype in the reports cited in the pharmacogenomic section.
+\end{enumerate}
+For the same drug in the same child, plausibly reduced efficacy and plausibly undiminished or increased toxicity. That asymmetry is the finding.
+
+\textbf{The DNA-damaging agents run the same way by a different route.} Cyclophosphamide, ifosfamide, doxorubicin, etoposide and radiotherapy do not act through the checkpoint, so the slippage argument does not apply to them. The argument for caution there is the one already made in this report: a chromosomal-instability background plus mutagenic exposure raises the risk of a therapy-related second malignancy. The single published rhabdomyosarcoma in this syndrome was treated with reduced-intensity chemotherapy {{ cite('[@nishitaniisa2019]') | tex }}. That paper's full text was not accessible to this analysis, so it is cited for the approach its title states and not for any regimen detail, which would have to be read from the paper before being built on.
+
+\textbf{Limits of the analogy, and of the inference.} De-intensification protocols in ataxia telangiectasia, Nijmegen breakage syndrome and Fanconi anaemia rest on DNA-repair defects ({{ cite('[@-sandoval1998]') | tex }}; {{ cite('[@-bienemann2011]') | tex }}; {{ cite('[@-gluckman1983]') | tex }}); this is a segregation defect, so the analogy is suggestive rather than direct. The antimitotic-resistance literature comes from cancer cell lines with acquired checkpoint loss, not from germline hypomorphs. The tumour's own checkpoint status is unknown, because no tumour sequencing was released, and a somatic event could have moved it in either direction. The anti-target rule governs new proposals only and is not applied to therapy given with curative intent.
+
+\textbf{A related risk the same mechanism raises.} Alkylating agents and topoisomerase II poisons, both components of standard therapy, are the established causes of therapy-related myeloid neoplasia, and this is a chromosomal instability and cancer-predisposition syndrome. The combination supports an elevated plausible risk of therapy-related secondary malignancy, bearing on cumulative-dose decisions and long-term haematological surveillance rather than on any protocol change; radiosensitivity, by contrast, is unresolved for this disorder and is recorded as an open question, not a finding. The full argument, with the pharmacogenomic findings for this context and the evidence behind both, is in Section~\ref{sec:pgxcontexts}.
+
+{% elif ot_status == 'unrecorded' %}
+\subsection{Candidate repurposing hypotheses (stage 1b)}
+Withheld. Stage-1b output exists in this directory, but it does not record which drug list produced it. Rerun \texttt{pgx\_annotate.nf} with a drug list whose \texttt{drug\_list\_label} is set.
+
+{% else %}
+\subsection{Candidate repurposing hypotheses (stage 1b)}
+Not run for this output. Provide a candidate list (\texttt{--drug\_list\_file}, schema in \texttt{assets/drugs\_track2.template.yml}) and run \texttt{pgx\_annotate.nf}.
+
+{% endif %}
+\subsection{Pharmacogenomic safety and feasibility context}\label{sec:pgx}
+\textbf{This section is not a prescribing recommendation, and it is not the deliverable.} The deliverable is the repurposing hypotheses above. Pharmacogenomics earns its place here for three specific reasons:
+
+\begin{enumerate}
+\item \textbf{It gates candidates.} A repurposing hypothesis is only viable if the child can take the drug. MT-RNR1 decides whether the aminoglycoside readthrough candidates are usable at all, so that genotype is a precondition for a candidate rather than a safety aside: it is reported with those candidates in Section~\ref{sec:stage1b}, where the verdict table shows the join.
+\item \textbf{It establishes the safety context a candidate would enter.} Any proposed addition has to sit alongside standard cytotoxic therapy, and the interaction between a chromosomal instability syndrome and that therapy is itself a finding, stated with the regimen in Section~\ref{sec:stage1b}.
+\item \textbf{It demonstrates that the calling method changes answers.} The copy-number counterfactual below shows a phenotype call flipping on whether the pipeline detects a gene duplication --- a claim about method rigour, not about this child's prescriptions.
+\end{enumerate}
+
+Everything in this section is safety and feasibility context: it constrains how a candidate could be used, and it does not decide whether a candidate is valid. The copy-number counterfactual is kept here because it is a methods result. {% if pgx_contexts_supp %}The full screen --- {{ pgx_ctx_stats.contexts }} clinical context{{ 's' if pgx_ctx_stats.contexts != 1 }} ({{ (pgx_contexts_supp | map(attribute='title') | join('; ')) | tex }}), {{ pgx_ctx_stats.findings }} findings in total, of which {{ pgx_ctx_stats.no_change }} carried no genotype-based change and {{ pgx_ctx_stats.flagged }} carried a guideline flag --- is reported in full in Section~\ref{sec:pgxcontexts}, with every call, annotation and panel gap. The negatives are reported there rather than omitted, because an empty flag column cannot show that a gene was tested. {% endif %}Every genotype interpretation is PharmCAT's own CPIC, DPWG or FDA annotation for the called genotype; FDA text is shown with its source and is never counted as a guideline flag.
+
+{% if counterfactual and counterfactual.applicable %}
+{% for g, v in counterfactual.genes.items() %}
+\textbf{Copy number changed a phenotype call ({{ g | tex }}).} The call is \texttt{ {{- v.observed.diplotype | tex -}} }: {{ v.observed.phenotype | tex }}, activity score {{ v.observed.activity_score | tex }}{% if g == 'CYP2D6' and star_cyp2d6 %}, with the duplication detected independently by Aldy (\texttt{ {{- star_cyp2d6.aldy | starname | tex -}} }) and PyPGx (\texttt{ {{- star_cyp2d6.pypgx | starname | tex -}} }){% endif %}. Without copy-number detection the same reads give \texttt{ {{- v.counterfactual.diplotype | tex -}} }: \textbf{ {{- v.counterfactual.phenotype | tex }}, activity score {{ v.counterfactual.activity_score | tex -}} }. Re-running PharmCAT on the same VCF with the copy-number-naive call changes {{ counterfactual.annotations_changed }} of {{ counterfactual.annotations_compared }} {{ g | tex }}-dependent CPIC/DPWG annotations. The consequence is large. Under the call this pipeline makes, {{ counterfactual.flagged_observed }} annotation{{ 's' if counterfactual.flagged_observed != 1 }} carr{{ 'y' if counterfactual.flagged_observed != 1 else 'ies' }} a dose-adjustment or alternative-drug flag; under the copy-number-naive call, {{ counterfactual.flagged_counterfactual }} would.{% if g == 'CYP2D6' and figs.cyp2d6_depth %} Figure~\ref{fig:cyp2d6_depth} shows the read depth behind the call: the CYP2D6 interval sits above the two-copy line in both tracks, while the surrounding sequence does not.{% endif %}{{ '' }}
+
+The {{ counterfactual.drugs_flagged_only_in_counterfactual | length }} drugs that the copy-number-naive call would have flagged, and this one does not: {{ counterfactual.drugs_flagged_only_in_counterfactual | join(', ') | tex }}.
+
+{% endfor %}
+{% if cf_context_rows %}
+\FloatBarrier
+\noindent{\small\emph{Table {{ tnum() }}. CPIC and DPWG annotations that change under a copy-number-naive CYP2D6 call.}}\nopagebreak[4]
+\begin{small}
+\begin{longtable}{L{0.137}L{0.068}L{0.398}L{0.397}}
+\toprule Drug (clinical context) & Source & Observed call & Copy-number-naive call \\ \midrule \endhead
+{% for r in cf_context_rows %}
+{{ r.drug | tex }} & {{ r.source | tex }} & {{ r.observed.classification | tex }}{% if r.observed.flag %} \textbf{[ {{- r.observed.flag | tex -}} ]}{% endif %}: {{ r.observed.recommendation | tex }} & {{ r.counterfactual.classification | tex }}{% if r.counterfactual.flag %} \textbf{[ {{- r.counterfactual.flag | tex -}} ]}{% endif %}: {{ r.counterfactual.recommendation | tex }} \\
+{% endfor %}
+\bottomrule
+\end{longtable}
+\end{small}
+{% endif %}
+{% endif %}
+
+{{ figure('cyp2d6_depth') }}
+
+\subsection{Modifier genotypes in the mechanistic panel}\label{sec:modifier}
+{% if modsum %}
+{{ modsum.variants_total }} variants ({{ modsum.variants_pass }} PASS); {{ modsum.rare }} rare; {{ modsum.functional }} functional; \textbf{ {{- modsum.rare_functional -}} rare and functional}:
+\FloatBarrier
+\noindent{\small\emph{Table {{ tnum() }}. Rare, functional variants across the mechanistic panel.}}\nopagebreak[4]
+\begin{scriptsize}
+\begin{longtable}{L{0.09}L{0.15}L{0.06}L{0.05}L{0.12}L{0.16}L{0.08}L{0.09}L{0.07}L{0.13}}
+\toprule Gene & Variant & Filter & Zyg. & Consequence & HGVSp & gnomAD AF & ClinVar & SpliceAI & AlphaMissense \\ \midrule \endhead
+{% for r in modrf %}
+{{ r.gene | tex }} & {{ (r.chrom ~ ':' ~ r.pos ~ ' ' ~ r.ref ~ '>' ~ r.alt) | tex }} & {{ r.filter | tex }} & {{ r.zygosity | tex }} & {{ r.consequence | tex }} & {{ r.hgvsp | tex }} & {{ (r.gnomad_af_joint or 'absent') | tex }} & {{ (r.clinvar_significance or '-') | tex }} & {{ (r.spliceai_max_delta or '-') | tex }} & {{ (r.alphamissense_score or '-') | tex }} {{ r.alphamissense_class | tex }} \\
+{% endfor %}
+\bottomrule
+\end{longtable}
+\end{scriptsize}
+{% else %}
+Not available.
+{% endif %}
+{% if cnv %}
+\textbf{Structural variants and copy number (panel genes):} {{ cnv.sv_touching_panel }} Delly calls touch the panel ({{ cnv.sv_touching_panel_high_tier }} high tier, {{ cnv.sv_contradicted_by_depth }} contradicted by depth); supported: {{ (cnv.sv_supported | join('; ')) | tex if cnv.sv_supported else 'none' }}. Exon noise $\sigma$ = {{ cnv.exon_noise_sigma_log2_at_150bp | fmt | tex }} log2 at 150 bp; median gene CN {{ cnv.gene_cn_median | fmt | tex }}.{% if figs.panel_exon_cn %} Figure~\ref{fig:panel_exon_cn} (appendix) shows every usable exon's copy-number estimate across the panel, with the flagged exons marked.{% endif %}
+{% for g in genecn_calls %}
+{% if g.check %}
+{{ g.gene | tex }}: {{ g.cn_call | tex }}. Read-level check: depth {{ g.check.span_window_range | tex }}x across the run vs {{ g.check.flank_window_range | tex }}x in the flanks ({{ g.check.span_to_flank_ratio }} of flank median; a heterozygous deletion gives \textasciitilde{}0.5), Delly call: {{ g.check.delly_overlapping | tex or 'none' }}. \textbf{ {{- g.check.verdict | capitalize | tex -}} }{% if g.check.verdict == 'not confirmed' %}: classified as noise, not a finding{% else %}; requires orthogonal confirmation (MLPA or ddPCR){% endif %}.
+{% else %}
+{{ g.gene | tex }}: {{ g.cn_call | tex }} (candidate; read-level check not available; requires orthogonal confirmation).
+{% endif %}
+{% endfor %}
+{% endif %}
+
+\subsection{Mosaic aneuploidy burden}
+{% if aneu %}
+Internal control: chrX non-PAR LRR {{ aneu.internal_control_chrX_nonPAR_lrr | fmt | tex }} (expected {{ aneu.internal_control_expected }}). {{ aneu.het_sites_used }} heterozygous sites (median depth {{ aneu.het_depth_median | fmt | tex }}x), {{ aneu.bins_kept }} bins.
+\FloatBarrier
+\noindent{\small\emph{Table {{ tnum() }}. Per-arm aneuploidy estimates, with the detection limit of each arm.}}\nopagebreak[4]
+\begin{small}
+\begin{longtable}{L{0.063}L{0.063}L{0.099}L{0.085}L{0.099}L{0.239}L{0.239}L{0.113}}
+\toprule Arm & Bins & Het sites & LRR & d & Status & Cell fraction (95\% CI) & Det.\ limit \\ \midrule \endhead
+{% for r in arm_rows %}
+{{ r.arm | tex }} & {{ r.n_bins }} & {{ r.n_het_sites }} & {{ r.lrr_mean | fmt | tex }} & {{ r.baf_d | fmt | tex }} & {{ r.status | tex }} & {% if r.cell_fraction is not none %}{{ r.cell_fraction | pct | tex }} [{{ r.cell_fraction_ci95[0] | pct | tex }}, {{ r.cell_fraction_ci95[1] | pct | tex }}] ({{ r.best_model | tex }}){% else %}--{% endif %} & {{ r.detection_limit_f.loss | pct | tex }} \\
+{% endfor %}
+\bottomrule
+\end{longtable}
+\end{small}
+{% if figs.genome %}Figure~\ref{fig:genome} shows depth and B-allele frequency genome-wide{% if figs.perchrom %}, Figure~\ref{fig:perchrom} the same per chromosome{% endif %}{% if figs.burden %}, and Figure~\ref{fig:burden} each arm's estimated burden against its own detection limit, which is the figure the null result rests on{% endif %}.{% endif %}
+{{ figure('genome') }}
+{{ figure('perchrom') }}
+{{ figure('burden') }}
+{% if karyotype_cmp %}
+\textbf{What a published MVA1 karyotype would look like here.} This assay can see an aneuploidy on a single arm only once it is present in at least {{ karyotype_cmp.best_limit | pct | tex }} of cells on the best arm, or {{ karyotype_cmp.median_limit | pct | tex }} on a median arm. {{ karyotype_cmp.citation | cite | tex }} report {{ karyotype_cmp.aneuploid_metaphases_pct }}\% aneuploid metaphases in a karyotype-confirmed MVA1 case. That burden was spread across about {{ karyotype_cmp.distinct_chromosomes }} distinct chromosomes, so the most recurrent single event ({{ karyotype_cmp.most_recurrent_event | tex }}) reached only {{ karyotype_cmp.most_recurrent_pct }}\% of cells, which is \textbf{ {{- '%.0f' | format(100 * karyotype_cmp.recurrent_vs_best) }}\% of the best-case limit}, and a typical {{ karyotype_cmp.typical_event_pct }}\% event only {{ '%.0f' | format(100 * karyotype_cmp.typical_vs_median) }}\% of the median limit. A burden of that shape is invisible to arm-level testing by construction: the burden is not small, it is spread. A null result here is therefore the expected result for MVA, not evidence that the assay failed. One assumption in the comparison is stated rather than hidden: karyotypes of this kind are made from cultured blood lymphocytes, and the released metadata does not state the sequenced specimen's tissue, so the comparison assumes the specimen samples a comparable cell population.
+
+{% endif %}
+\textbf{Caveats (from the analysis output):}
+\begin{itemize}
+{% for c in aneu.caveats %}
+\item {{ c | tex }}
+{% endfor %}
+\end{itemize}
+{% else %}
+Not available.
+{% endif %}
+
+\subsection{Genome context and QC}
+{% if qc %}
+\FloatBarrier
+\noindent{\small\emph{Table {{ tnum() }}. Genome quality-control checks against the thresholds applied.}}\nopagebreak[4]
+\begin{small}
+\begin{longtable}{L{0.321}L{0.154}L{0.077}L{0.448}}
+\toprule Check & Value & Status & Rule \\ \midrule \endhead
+{% for c in qc_checks %}
+{{ c.check | tex }} & {{ c.value | fmt | tex }} & {{ c.status | tex }} & {{ c.rule | tex }} \\
+{% endfor %}
+\bottomrule
+\end{longtable}
+\end{small}
+Ancestry: {{ qc.ancestry.predicted | tex }} ({{ qc.ancestry.reference | tex }}). Sex: {{ qc.sex_inferred.sex | tex }} (X/autosome depth {{ qc.sex_inferred.x_to_autosome_depth | fmt | tex }}, X het sites {{ qc.sex_inferred.x_het_sites | fmt | tex }}, Y depth {{ qc.sex_inferred.y_depth | fmt | tex }}, chrX LRR {{ qc.sex_inferred.chrX_lrr | fmt | tex }}). Reads {{ '{:,}'.format(qc.reads_total) }}; primary mapped {{ qc.primary_mapped_pct }}\%; duplicates {{ qc.duplicate_pct }}\%; mean autosomal depth {{ qc.mean_depth_autosomes }}x. ROH: $F_{ROH}$($\geq$1.5 Mb) = {{ qc.roh.F_ROH['>=1.5Mb'].F_ROH }}, longest {{ qc.roh.longest_roh.mb if qc.roh.longest_roh else 'n/a' }} Mb.
+
+{% if figs.ancestry_pca %}Figure~\ref{fig:ancestry_pca} places the sample among the reference populations; the ancestry caveat in the limitations applies to that cluster assignment, not to any haplotype.{% endif %}{% if figs.roh %} Figure~\ref{fig:roh} shows every run of homozygosity against the thresholds; the recurrent-miscarriage argument in Section~\ref{sec:mechanism} rests on none reaching 1.5 Mb.{% endif %}{% if figs.qc_overview %} The sequencing-level checks behind the table are in Figure~\ref{fig:qc_overview} (appendix).{% endif %}
+{{ figure('ancestry_pca') }}
+{{ figure('roh') }}
+{% else %}
+Not available.
+{% endif %}
+
+\section{Discussion and conclusion}
+{% filter mdbold %}{% filter tex %}{% include 'discussion.j2' %}{% endfilter %}{% endfilter %}
+
+\section{Limitations}\label{sec:limitations}
+{% filter tex %}{% include 'limitations.j2' %}{% endfilter %}
+
+\section{Provenance}
+Pipeline {{ prov.pipeline.name | tex }} {{ prov.pipeline.version | tex }}, Nextflow {{ prov.pipeline.nextflow_version | tex }}, session \texttt{ {{- prov.pipeline.session_id | tex -}} }, profile \texttt{ {{- prov.pipeline.profile | tex -}} }. Reference: {{ prov.reference.build | tex }} / {{ prov.reference.name | tex }} (source md5 {{ prov.reference.source_md5 | tex }}).
+Modules behind the mechanism results: \texttt{readthrough\_analysis} (stop codon, 3' context, near-cognate products and the ClinVar share), \texttt{variant\_mechanism} (NMD sensitivity and the domain map), \texttt{mt\_rnr1\_call} (the aminoglycoside gate), \texttt{pgx\_annotate.nf} (the drug-driven pharmacogenomic join).
+\begin{itemize}
+{% for k, v in prov.databases.items() %}
+\item {{ k | tex }}: {{ v | tex }}
+{% endfor %}
+\end{itemize}
+\FloatBarrier
+\noindent{\small\emph{Table {{ tnum() }}. Tool versions recorded for this run.}}\nopagebreak[4]
+\begin{small}
+\begin{longtable}{L{0.333}L{0.667}}
+\toprule Tool & Version(s) \\ \midrule \endhead
+{% for k, v in prov.tools.items() %}
+{{ k | tex }} & {{ v | tex }} \\
+{% endfor %}
+\bottomrule
+\end{longtable}
+\end{small}
+
+\section{Appendix}
+Material that supports the sections above without changing any conclusion: the full pharmacogenomic screen by clinical context, every pharmacogene call, and the figures behind tables the report prints.
+
+\subsection{Pharmacogenomic results by clinical context}\label{sec:pgxcontexts}
+Results are grouped by the clinical contexts this child may meet and ordered by how well each is supported by evidence about this child. A normal or negative genotype in a class this child will meet is reported as a finding in its own row, because an empty flag column is not a reassuring result. Curated literature is shown separately from guidelines and labelled as such. The research-hypothesis framing of this report applies to every row below.
+
+\noindent\fcolorbox{black}{gray!8}{\parbox{\dimexpr\linewidth-2\fboxsep}{\textbf{On the clinical features.} Everything below obeys the \textbf{feature-absence rule} stated in the Methods: a feature absent from the released HPO set is treated as unknown, never as absent. Nothing below says this child lacks a feature, and any inference that would depend on a feature being genuinely absent is written as conditional.}}
+
+{% for c in pgx_contexts_supp %}
+\subsubsection{ {{- c.title | tex -}} }
+\emph{ {{- c.support_label | tex -}} .}
+
+{{ c.why | cite | tex }}
+
+{% for n in c.narrative %}
+{{ n | cite | tex }}
+
+{% endfor %}
+{% if c.findings %}
+\FloatBarrier
+\noindent{\small\emph{Table {{ tnum() }}. Pharmacogenomic findings for {{ c.title | lower | tex }}.}}\nopagebreak[4]
+\begin{small}
+\begin{longtable}{L{0.192}L{0.205}L{0.231}L{0.205}L{0.167}}
+\toprule Finding & Gene: call & Allele function & Phenotype & Result \\ \midrule \endhead
+{% for f in c.findings %}
+{{ f.label | tex }} & {% for g in f.genes %}{{ g.gene | tex }}: \texttt{ {{- g.diplotype | tex -}} }{{ ' \\newline ' if not loop.last }}{% endfor %} & {% for g in f.genes %}{{ (g.alleles or '-') | tex }}{{ ' \\newline ' if not loop.last }}{% endfor %} & {% for g in f.genes %}{{ g.phenotype | tex }}{% if g.activity %} (AS {{ g.activity | tex }}){% endif %}{{ ' \\newline ' if not loop.last }}{% endfor %} & \textbf{ {{- f.status | tex -}} } \\
+{% endfor %}
+\bottomrule
+\end{longtable}
+\end{small}
+
+\begin{itemize}
+{% for f in c.findings %}
+\item \textbf{ {{- f.label | tex -}} .}{% if f.note %} {{ f.note | cite | tex }}{% endif %}{% if not f.annotations and not f.literature %} No annotation matches this genotype.{% endif %}
+
+{% if f.annotations or f.literature or f.missing_drugs %}
+\begin{itemize}
+{% for x in f.annotations %}
+\item {{ x.drugs | tex }} [{{ x.genes | tex }}], {{ x.source | tex }}{% if x.classification %} ({{ x.classification | tex }}){% endif %}{% if x.flag %} \textbf{[ {{- x.flag | tex -}} ]}{% endif %}: {{ x.recommendation | tex }}
+{% endfor %}
+{% for x in f.literature %}
+\item \emph{Literature, not a guideline:} {{ x.statement | cite | tex }} {{ cite_pmid(x.pmid, x.citation) | tex }}
+{% endfor %}
+{% if f.missing_drugs %}
+\item Not in PharmCAT's data: {{ f.missing_drugs | join(', ') | tex }}.
+{% endif %}
+\end{itemize}
+{% endif %}
+{% endfor %}
+{% if c.unannotated %}
+\item \textbf{No CPIC, DPWG or FDA annotation in PharmCAT:} {{ c.unannotated | join(', ') | tex }}. {{ c.unannotated_note | cite | tex }}{% if c.unannotated_in_stage1b %} That lookup was run for {{ c.unannotated_in_stage1b | join(', ') | tex }}: see ``The standard rhabdomyosarcoma regimen'' in Section~\ref{sec:stage1b}.{% endif %}
+{% endif %}
+\end{itemize}
+{% endif %}
+{% if c.panel_gap_genes %}
+
+\textbf{Panel gap --- genes bearing on this context that were scoped out of the panel.} {{ c.panel_gap_note | cite | tex }}
+
+\FloatBarrier
+\noindent{\small\emph{Table {{ tnum() }}. Genes bearing on {{ c.title | lower | tex }} that were scoped out of the panel.}}\nopagebreak[4]
+\begin{small}
+\begin{longtable}{L{0.155}L{0.845}}
+\toprule Gene & Relevance \\ \midrule \endhead
+{% for g, rel in c.panel_gap_genes.items() %}
+{{ g | tex }} & {{ rel | tex }} \\
+{% endfor %}
+\bottomrule
+\end{longtable}
+\end{small}
+{% endif %}
+
+{% endfor %}
+{% if figs.pgx_concordance %}
+Figure~\ref{fig:pgx_concordance} lays the three callers' calls side by side for every gene. Its verdict column is the agreement column of the table below, so the calls can be compared gene by gene.{% if figs.forcecall_depth %} Depth at every genotyped position is in Figure~\ref{fig:forcecall_depth}.{% endif %}
+{% endif %}
+{{ figure('pgx_concordance') }}
+\subsection{All pharmacogene calls}
+\FloatBarrier
+\noindent{\small\emph{Table {{ tnum() }}. Every pharmacogene call, with caller agreement.}}\nopagebreak[4]
+\begin{small}
+\begin{longtable}{L{0.11}L{0.221}L{0.248}L{0.076}L{0.152}L{0.193}}
+\toprule Gene & Diplotype & Phenotype & Activity & Call source & PharmCAT vs Aldy \\ \midrule \endhead
+{% for r in pgx_rows %}
+{{ r.gene | tex }} & {{ r.diplotype | tex }} & {{ r.phenotype | tex }} & {{ r.activity | tex }} & {{ r.source | tex }} & {{ r.agreement | tex }}{% if r.undocumented %} (undocumented variation){% endif %} \\
+{% else %}
+\multicolumn{6}{l}{not available} \\
+{% endfor %}
+\bottomrule
+\end{longtable}
+\end{small}
+
+\textbf{Aldy vs PyPGx (Stargazer successor):} {% if star_counts %}{% for k, v in star_counts.items() %}{{ v }} {{ k | tex }}{{ ", " if not loop.last }}{% endfor %}.{% else %}not available.{% endif %}{{ '' }}
+{% for r in star_rows if r.status == 'different' %}
+{{ r.gene | tex }}: Aldy \texttt{ {{- r.aldy | starname | tex -}} } vs PyPGx \texttt{ {{- r.pypgx | starname | tex -}} }.
+{% endfor %}
+
+\textbf{HLA (T1K vs OptiType, 2-field):} {% if hla %}{% for g, s in hla.class_I_agreement.items() %}{{ g | tex }} {{ s | tex }}{{ ", " if not loop.last }}{% endfor %}; passed to PharmCAT: {{ (hla.passed_to_pharmcat | join(', ')) | tex or 'none' }}.{% else %}not available.{% endif %}
+
+{% if mt_rnr1 %}
+\textbf{MT-RNR1 (mitochondrial 12S rRNA):} genotyped from the CRAM on contig \texttt{ {{- mt_rnr1.contig | tex -}} } ({{ mt_rnr1.gene_region | tex }}), median depth {{ mt_rnr1.depth_median }}x (minimum {{ mt_rnr1.depth_min }}x); {{ mt_rnr1.cpic_alleles_tested }} CPIC alleles tested; called: {% if mt_rnr1.cpic_alleles_called %}{% for x in mt_rnr1.cpic_alleles_called %}{{ x.allele | tex }} {{ x.state | tex }} (AF {{ x.af }}){{ ", " if not loop.last }}{% endfor %}{% else %}none at allele fraction $\geq$ {{ mt_rnr1.thresholds.heteroplasmic_min }}{% endif %}{% if mt_rnr1.cpic_low_level %}; low-level (not called): {% for x in mt_rnr1.cpic_low_level %}{{ x.allele | tex }} AF {{ x.af }}{{ ", " if not loop.last }}{% endfor %}{% endif %}. Passed to PharmCAT as \texttt{ {{- mt_rnr1.pharmcat_outside_call | tex -}} }. Positive control: {% for x in mt_rnr1.positive_controls_observed %}m.{{ x.pos }}{{ x.ref | tex }}\textgreater{}{{ x.alt | tex }} {{ x.state | tex }} (AF {{ x.af }}){{ ", " if not loop.last }}{% else %}none observed{% endfor %}.{% for fl in mt_rnr1.flags %} {{ fl | tex }}.{% endfor %}{% if figs.mt_rnr1 %} Figure~\ref{fig:mt_rnr1} (appendix) plots the allele fraction at every tested allele against the thresholds, with the two homoplasmic positive controls.{% endif %}
+
+{% endif %}
+\textbf{Other flagged CPIC/DPWG annotations (drug classes outside the contexts above, listed for completeness):}
+{% if actionable_outside_contexts %}
+\FloatBarrier
+\noindent{\small\emph{Table {{ tnum() }}. Flagged CPIC and DPWG annotations for drug classes outside the contexts above.}}\nopagebreak[4]
+\begin{small}
+\begin{longtable}{L{0.148}L{0.074}L{0.134}L{0.148}L{0.094}L{0.402}}
+\toprule Drug & Source & Gene(s) & Flag & Strength & Recommendation \\ \midrule \endhead
+{% for x in actionable_outside_contexts %}
+{{ x.drug | tex }} & {{ x.source | tex }} & {{ x.genes | tex }} & {{ x.flag | tex }} & {{ x.classification | tex }} & {{ x.recommendation | replace('\n', ' ') | tex }} \\
+{% endfor %}
+\bottomrule
+\end{longtable}
+\end{small}
+{% else %}
+None.
+{% endif %}
+
+\subsection{Tumour-directed candidates}\label{sec:tumourdirected}
+These candidates treat the malignancy rather than the {{ domain_map.gene | tex if domain_map else 'causal gene' }} mechanism. They were resolved, filtered by the anti-target rule and joined to this child's pharmacogenotypes exactly as the mechanism-directed candidates were; they are reported here because none of them can be assessed from the data released for this challenge.
+
+{% for grp in ot_groups_supp %}
+{{ grp.blurb | tex }}
+
+{% for ax in grp.axes %}
+\paragraph{Axis {{ ax.axis | tex }}. {{ ax.title | tex }}}\mbox{}\\
+{{ ax.rationale | cite | tex }}
+
+\begin{itemize}
+{% for d in ax.drugs %}
+\item \textbf{ {{- d.name | tex -}} } --- tier {{ d.tier | tex }}{{ (', ' ~ d.support) | tex if d.support else '' }}{{ (', Open Targets maximum clinical stage ' ~ d.stage) | tex if d.stage else '' }}{{ (', ' ~ d.investigational) | tex if d.investigational else '' }}{% if d.anti_target and d.anti_target != 'allowed' %} --- \textbf{ {{- d.anti_target | tex -}} }{{ (': ' ~ d.anti_target_reason) | tex if d.anti_target_reason else '' }}{% endif %}
+{% if d.caution %}
+
+\emph{Status and caveats:} {{ d.caution | cite | tex }}
+{% endif %}
+{% if d.move_up %}
+
+\emph{To raise the tier:} {{ d.move_up | cite | tex }}
+{% endif %}
+{% if d.below_asserted %}
+
+\emph{ClinPGx rows below the asserted levels, counted and not joined:} {{ d.below_asserted | tex }}
+{% endif %}
+{% endfor %}
+\end{itemize}
+{% endfor %}
+{% endfor %}
+
+\textbf{Why these candidates are all tier 3: the tumour genotype is missing}
+
+All five tumour-directed candidates share a single blocker, and it is the same one each time. The released data is germline whole-genome sequencing. Precision-oncology candidates are selected on the tumour's genotype --- fusion status, copy number, homologous-recombination status, aneuploidy score --- none of which is derivable from germline data. The candidates cannot be assessed, and the reason does not differ between them.
+
+\FloatBarrier
+\noindent{\small\emph{Table {{ tnum() }}. Tumour results that would make each tumour-directed candidate assessable.}}\nopagebreak[4]
+\begin{small}
+\begin{longtable}{L{0.214}L{0.786}}
+\toprule Candidate & Tumour data that would make it assessable \\ \midrule \endhead
+abemaciclib & histology; PAX3/PAX7-FOXO1 fusion status; CDK4 copy number or expression \\
+olaparib & homologous-recombination deficiency or aneuploidy score; HR-pathway variant status \\
+niraparib & as olaparib, plus any rhabdomyosarcoma-specific PARP data, of which none was found \\
+ceralasertib & ATM status; replication-stress markers \\
+simvastatin & none --- the proposed mechanism is unsupported; retained as a worked negative \\
+\bottomrule
+\end{longtable}
+\end{small}
+
+The table above is in effect a test-request list. If a tumour pathology record exists for this child, these are the specific results that would make each candidate assessable.
+
+\textbf{What this says about the substrate.} Germline whole-genome sequencing is the right data for mechanism-directed candidates and for pharmacogenomics, and the wrong data for tumour-directed ones. The data released for this challenge therefore points toward mechanism, which is where the readthrough axis, the proteostasis axis and the vincristine finding sit, and away from the tumour-directed candidates.
+
+
+\subsection{The standard rhabdomyosarcoma regimen}\label{sec:regimenlisting}
+{% if ot_regimen_supp %}
+{% for ax in ot_regimen_supp %}
 {{ ax.rationale | cite | tex }}
 
 These agents are not repurposing candidates. The anti-target rule governs proposing \emph{new} drugs for a mitotic-fidelity disorder; it is not applied to therapy given with curative intent and does not license withdrawing it. Every agent here was queried in Open Targets regardless of the rule, so its ClinPGx annotations, including positions outside the stage 1a panel, were force-called from the CRAM and joined to this child's genotypes. Where the rule would have matched, the mechanism is shown as a note: it is the basis of the therapy-related-risk consideration in Section~\ref{sec:pgx}, not an exclusion. A drug with no asserted ClinPGx row is reported as no data, which is not evidence of no effect.{% if figs.stage1b_levels %} Figure~\ref{fig:stage1b_levels} shows where each drug's ClinPGx evidence sits: only the outlined columns reach the asserted levels, and the counts to their right are what a lower threshold would bring in.{% endif %}
@@ -326,6 +733,8 @@ These agents are not repurposing candidates. The anti-target rule governs propos
 {% endfor %}
 \end{itemize}
 
+\FloatBarrier
+\noindent{\small\emph{Table {{ tnum() }}. Pharmacogenomic verdicts for the agents of the standard regimen.}}\nopagebreak[4]
 \begin{small}
 \begin{longtable}{L{0.17}L{0.08}L{0.18}L{0.1}L{0.15}L{0.05}L{0.13}L{0.14}}
 \toprule Drug & Gene & Called & Caller & Matched OT allele & Level & Flag & Basis \\ \midrule \endhead
@@ -369,285 +778,7 @@ The rule: \textbf{an inhibitor of a mitotic-fidelity gene is contraindicated in 
 
 Full table: \texttt{pgx/open\_targets/ {{- sample | tex -}} .pgx\_ot.verdicts.tsv}; resolution and anti-target detail: \texttt{…track2.resolved.tsv}, \texttt{…track2.anti\_target.tsv}.
 
-\subsubsection*{What the mechanism implies for the therapy already given}
-This is a mechanism finding, not a repurposing candidate, and it bears on treatment the child is already receiving. It is a consideration for the treating team. It is \textbf{not} a recommendation to alter a rhabdomyosarcoma protocol, and nothing here licenses withdrawing therapy given with curative intent.
-
-\textbf{The vincristine asymmetry.} Vincristine kills by disrupting the spindle so that the spindle assembly checkpoint holds the cell in mitosis until it dies there. A cell with a weakened checkpoint does not arrest; it slips through mitosis and survives. That is a documented resistance mechanism for antimitotic drugs: checkpoint-compromised cells are less sensitive to paclitaxel {{ cite('[@sudo2004]') | tex }} and to microtubule-targeted drugs generally {{ cite('[@lee2004]') | tex }}, mitotic slippage is the established route to that resistance {{ cite('[@cheng2017]') | tex }}, and the one report specific to this protein runs the same way in reverse: BubR1 is repressed in acute myeloid leukaemia, and restoring it re-sensitises the cells to antimitotic therapy {{ cite('[@schnerch2013]') | tex }}.
-
-This child's checkpoint defect is germline, so it is present in the tumour as well as in normal tissue. Two consequences follow, both stated as hypotheses:
-\begin{enumerate}
-\item \textbf{Efficacy.} The tumour may be intrinsically less sensitive to vincristine's cytotoxic mechanism than a checkpoint-competent tumour of the same histology.
-\item \textbf{Toxicity.} Vincristine's dose-limiting toxicity is peripheral neuropathy, which acts through axonal microtubule transport in post-mitotic neurons. That mechanism does not involve the checkpoint, so it is not reduced by the defect. This child is additionally a CYP3A5 non-expresser, the higher-neuropathy-risk genotype in the reports cited in the pharmacogenomic section.
-\end{enumerate}
-For the same drug in the same child, plausibly reduced efficacy and plausibly undiminished or increased toxicity. That asymmetry is the finding.
-
-\textbf{The DNA-damaging agents run the same way by a different route.} Cyclophosphamide, ifosfamide, doxorubicin, etoposide and radiotherapy do not act through the checkpoint, so the slippage argument does not apply to them. The argument for caution there is the one already made in this report: a chromosomal-instability background plus mutagenic exposure raises the risk of a therapy-related second malignancy. The single published rhabdomyosarcoma in this syndrome was treated with reduced-intensity chemotherapy {{ cite('[@nishitaniisa2019]') | tex }}. That paper's full text was not accessible to this analysis, so it is cited for the approach its title states and not for any regimen detail, which would have to be read from the paper before being built on.
-
-\textbf{Limits of the analogy, and of the inference.} De-intensification protocols in ataxia telangiectasia, Nijmegen breakage syndrome and Fanconi anaemia rest on DNA-repair defects ({{ cite('[@-sandoval1998]') | tex }}; {{ cite('[@-bienemann2011]') | tex }}; {{ cite('[@-gluckman1983]') | tex }}); this is a segregation defect, so the analogy is suggestive rather than direct. The antimitotic-resistance literature comes from cancer cell lines with acquired checkpoint loss, not from germline hypomorphs. The tumour's own checkpoint status is unknown, because no tumour sequencing was released, and a somatic event could have moved it in either direction. The anti-target rule governs new proposals only and is not applied to treatment already given.
-
-\subsubsection*{Why the tumour-directed candidates are all tier 3: the tumour genotype is missing}
-All five tumour-directed candidates share a single blocker, and it is the same one each time. The released data is germline whole-genome sequencing. Precision-oncology candidates are selected on the tumour's genotype --- fusion status, copy number, homologous-recombination status, aneuploidy score --- none of which is derivable from germline data. The candidates cannot be assessed, and the reason does not differ between them.
-
-\begin{small}
-\begin{longtable}{L{0.214}L{0.786}}
-\toprule Candidate & Tumour data that would make it assessable \\ \midrule \endhead
-abemaciclib & histology; PAX3/PAX7-FOXO1 fusion status; CDK4 copy number or expression \\
-olaparib & homologous-recombination deficiency or aneuploidy score; HR-pathway variant status \\
-niraparib & as olaparib, plus any rhabdomyosarcoma-specific PARP data, of which none was found \\
-ceralasertib & ATM status; replication-stress markers \\
-simvastatin & none --- the proposed mechanism is unsupported; retained as a worked negative \\
-\bottomrule
-\end{longtable}
-\end{small}
-
-The table above is in effect a test-request list. If a tumour pathology record exists for this child, these are the specific results that would make each candidate assessable.
-
-\textbf{What this says about the substrate.} Germline whole-genome sequencing is the right data for mechanism-directed candidates and for pharmacogenomics, and the wrong data for tumour-directed ones. The data released for this challenge therefore points toward mechanism, which is where the readthrough axis, the proteostasis axis and the vincristine finding sit, and away from the tumour-directed candidates. That is the reason this report's weight rests where it does.
-
-{% elif ot_status == 'unrecorded' %}
-\subsection{Candidate repurposing hypotheses (stage 1b)}
-Withheld. Stage-1b output exists in this directory, but it does not record which drug list produced it. Rerun \texttt{pgx\_annotate.nf} with a drug list whose \texttt{drug\_list\_label} is set.
-
-{% else %}
-\subsection{Candidate repurposing hypotheses (stage 1b)}
-Not run for this output. Provide a candidate list (\texttt{--drug\_list\_file}, schema in \texttt{assets/drugs\_track2.template.yml}) and run \texttt{pgx\_annotate.nf}.
-
-{% endif %}
-\subsection{Pharmacogenomic safety and feasibility context}\label{sec:pgx}
-\textbf{This section is not a prescribing recommendation, and it is not the deliverable.} The deliverable is the repurposing hypotheses above. Pharmacogenomics earns its place here for three specific reasons:
-
-\begin{enumerate}
-\item \textbf{It gates candidates.} A repurposing hypothesis is only viable if the child can take the drug. MT-RNR1 decides whether the aminoglycoside readthrough candidates in Axis 1 are usable at all, so a genotype in this section is a precondition for a candidate in the previous one.
-\item \textbf{It establishes the safety context a candidate would enter.} This child is receiving cytotoxic therapy. Any proposed addition has to sit alongside that, and the interaction between a chromosomal instability syndrome and its treatment is itself a finding.
-\item \textbf{It demonstrates that the calling method changes answers.} The copy-number counterfactual below shows a phenotype call flipping on whether the pipeline detects a gene duplication --- a claim about method rigour, not about this child's prescriptions.
-\end{enumerate}
-
-Results are grouped by the clinical contexts this child actually faces and ordered by how well each is supported by evidence about this child. A normal or negative genotype in a class this child will meet is reported as a finding in its own row, because an empty flag column is not a reassuring result. Every genotype interpretation is PharmCAT's own CPIC, DPWG or FDA annotation for the called genotype; FDA text is shown with its source and is never counted as a guideline flag. Curated literature is shown separately from guidelines and labelled as such. The research-hypothesis statement at the head of this report applies to every row below.
-
-\noindent\fcolorbox{black}{gray!8}{\parbox{\dimexpr\linewidth-2\fboxsep}{\textbf{On the clinical features.} Everything below obeys the \textbf{feature-absence rule} stated in the Methods: a feature absent from the released HPO set is treated as unknown, never as absent. Nothing below says this child lacks a feature, and any inference that would depend on a feature being genuinely absent is written as conditional.}}
-
-{% if counterfactual and counterfactual.applicable %}
-{% for g, v in counterfactual.genes.items() %}
-\textbf{Copy number changed a phenotype call ({{ g | tex }}).} The call is \texttt{ {{- v.observed.diplotype | tex -}} }: {{ v.observed.phenotype | tex }}, activity score {{ v.observed.activity_score | tex }}{% if g == 'CYP2D6' and star_cyp2d6 %}, with the duplication detected independently by Aldy (\texttt{ {{- star_cyp2d6.aldy | starname | tex -}} }) and PyPGx (\texttt{ {{- star_cyp2d6.pypgx | starname | tex -}} }){% endif %}. Without copy-number detection the same reads give \texttt{ {{- v.counterfactual.diplotype | tex -}} }: \textbf{ {{- v.counterfactual.phenotype | tex }}, activity score {{ v.counterfactual.activity_score | tex -}} }. Re-running PharmCAT on the same VCF with the copy-number-naive call changes {{ counterfactual.annotations_changed }} of {{ counterfactual.annotations_compared }} {{ g | tex }}-dependent CPIC/DPWG annotations. The consequence is large. Under the call this pipeline makes, {{ counterfactual.flagged_observed }} annotation{{ 's' if counterfactual.flagged_observed != 1 }} carr{{ 'y' if counterfactual.flagged_observed != 1 else 'ies' }} a dose-adjustment or alternative-drug flag; under the copy-number-naive call, {{ counterfactual.flagged_counterfactual }} would.{% if g == 'CYP2D6' and figs.cyp2d6_depth %} Figure~\ref{fig:cyp2d6_depth} shows the read depth behind the call: the CYP2D6 interval sits above the two-copy line in both tracks, while the surrounding sequence does not.{% endif %}{{ '' }}
-
-The {{ counterfactual.drugs_flagged_only_in_counterfactual | length }} drugs that the copy-number-naive call would have flagged, and this one does not: {{ counterfactual.drugs_flagged_only_in_counterfactual | join(', ') | tex }}.
-
-{% endfor %}
-{% if cf_context_rows %}
-\begin{small}
-\begin{longtable}{L{0.137}L{0.068}L{0.398}L{0.397}}
-\toprule Drug (clinical context) & Source & Observed call & Copy-number-naive call \\ \midrule \endhead
-{% for r in cf_context_rows %}
-{{ r.drug | tex }} & {{ r.source | tex }} & {{ r.observed.classification | tex }}{% if r.observed.flag %} \textbf{[ {{- r.observed.flag | tex -}} ]}{% endif %}: {{ r.observed.recommendation | tex }} & {{ r.counterfactual.classification | tex }}{% if r.counterfactual.flag %} \textbf{[ {{- r.counterfactual.flag | tex -}} ]}{% endif %}: {{ r.counterfactual.recommendation | tex }} \\
-{% endfor %}
-\bottomrule
-\end{longtable}
-\end{small}
-{% endif %}
-{% endif %}
-
-{% for c in pgx_contexts %}
-\subsubsection{ {{- c.title | tex -}} }
-\emph{ {{- c.support_label | tex -}} .}
-
-{{ c.why | cite | tex }}
-
-{% for n in c.narrative %}
-{{ n | cite | tex }}
-
-{% endfor %}
-{% if c.findings %}
-\begin{small}
-\begin{longtable}{L{0.192}L{0.205}L{0.231}L{0.205}L{0.167}}
-\toprule Finding & Gene: call & Allele function & Phenotype & Result \\ \midrule \endhead
-{% for f in c.findings %}
-{{ f.label | tex }} & {% for g in f.genes %}{{ g.gene | tex }}: \texttt{ {{- g.diplotype | tex -}} }{{ ' \\newline ' if not loop.last }}{% endfor %} & {% for g in f.genes %}{{ (g.alleles or '-') | tex }}{{ ' \\newline ' if not loop.last }}{% endfor %} & {% for g in f.genes %}{{ g.phenotype | tex }}{% if g.activity %} (AS {{ g.activity | tex }}){% endif %}{{ ' \\newline ' if not loop.last }}{% endfor %} & \textbf{ {{- f.status | tex -}} } \\
-{% endfor %}
-\bottomrule
-\end{longtable}
-\end{small}
-
-\begin{itemize}
-{% for f in c.findings %}
-\item \textbf{ {{- f.label | tex -}} .}{% if f.note %} {{ f.note | cite | tex }}{% endif %}{% if not f.annotations and not f.literature %} No annotation matches this genotype.{% endif %}
-
-{% if f.annotations or f.literature or f.missing_drugs %}
-\begin{itemize}
-{% for x in f.annotations %}
-\item {{ x.drugs | tex }} [{{ x.genes | tex }}], {{ x.source | tex }}{% if x.classification %} ({{ x.classification | tex }}){% endif %}{% if x.flag %} \textbf{[ {{- x.flag | tex -}} ]}{% endif %}: {{ x.recommendation | tex }}
-{% endfor %}
-{% for x in f.literature %}
-\item \emph{Literature, not a guideline:} {{ x.statement | cite | tex }} {{ cite_pmid(x.pmid, x.citation) | tex }}
-{% endfor %}
-{% if f.missing_drugs %}
-\item Not in PharmCAT's data: {{ f.missing_drugs | join(', ') | tex }}.
-{% endif %}
-\end{itemize}
-{% endif %}
-{% endfor %}
-{% if c.unannotated %}
-\item \textbf{No CPIC, DPWG or FDA annotation in PharmCAT:} {{ c.unannotated | join(', ') | tex }}. {{ c.unannotated_note | cite | tex }}{% if c.unannotated_in_stage1b %} That lookup was run for {{ c.unannotated_in_stage1b | join(', ') | tex }}: see ``Treatment the child is already receiving'' in Section~\ref{sec:stage1b}.{% endif %}
-{% endif %}
-\end{itemize}
-{% endif %}
-{% if c.panel_gap_genes %}
-
-\textbf{Panel gap --- genes bearing on this context that were scoped out of the panel.} {{ c.panel_gap_note | cite | tex }}
-
-\begin{small}
-\begin{longtable}{L{0.155}L{0.845}}
-\toprule Gene & Relevance \\ \midrule \endhead
-{% for g, rel in c.panel_gap_genes.items() %}
-{{ g | tex }} & {{ rel | tex }} \\
-{% endfor %}
-\bottomrule
-\end{longtable}
-\end{small}
-{% endif %}
-
-{% endfor %}
-{% if figs.pgx_concordance %}
-Figure~\ref{fig:pgx_concordance} lays the three callers' calls side by side for every gene. Its verdict column is the agreement column of the table below, so the calls can be compared gene by gene.{% if figs.cyp2d6_depth %} Figure~\ref{fig:cyp2d6_depth} is the read-level evidence for the one copy-number call in the panel.{% endif %}{% if figs.forcecall_depth %} Depth at every genotyped position is in Figure~\ref{fig:forcecall_depth} (appendix).{% endif %}
-{% endif %}
-{{ figure('pgx_concordance') }}
-{{ figure('cyp2d6_depth') }}
-\subsubsection*{All pharmacogene calls}
-\begin{small}
-\begin{longtable}{L{0.11}L{0.221}L{0.248}L{0.076}L{0.152}L{0.193}}
-\toprule Gene & Diplotype & Phenotype & Activity & Call source & PharmCAT vs Aldy \\ \midrule \endhead
-{% for r in pgx_rows %}
-{{ r.gene | tex }} & {{ r.diplotype | tex }} & {{ r.phenotype | tex }} & {{ r.activity | tex }} & {{ r.source | tex }} & {{ r.agreement | tex }}{% if r.undocumented %} (undocumented variation){% endif %} \\
-{% else %}
-\multicolumn{6}{l}{not available} \\
-{% endfor %}
-\bottomrule
-\end{longtable}
-\end{small}
-
-\textbf{Aldy vs PyPGx (Stargazer successor):} {% if star_counts %}{% for k, v in star_counts.items() %}{{ v }} {{ k | tex }}{{ ", " if not loop.last }}{% endfor %}.{% else %}not available.{% endif %}{{ '' }}
-{% for r in star_rows if r.status == 'different' %}
-{{ r.gene | tex }}: Aldy \texttt{ {{- r.aldy | starname | tex -}} } vs PyPGx \texttt{ {{- r.pypgx | starname | tex -}} }.
-{% endfor %}
-
-\textbf{HLA (T1K vs OptiType, 2-field):} {% if hla %}{% for g, s in hla.class_I_agreement.items() %}{{ g | tex }} {{ s | tex }}{{ ", " if not loop.last }}{% endfor %}; passed to PharmCAT: {{ (hla.passed_to_pharmcat | join(', ')) | tex or 'none' }}.{% else %}not available.{% endif %}
-
-{% if mt_rnr1 %}
-\textbf{MT-RNR1 (mitochondrial 12S rRNA):} genotyped from the CRAM on contig \texttt{ {{- mt_rnr1.contig | tex -}} } ({{ mt_rnr1.gene_region | tex }}), median depth {{ mt_rnr1.depth_median }}x (minimum {{ mt_rnr1.depth_min }}x); {{ mt_rnr1.cpic_alleles_tested }} CPIC alleles tested; called: {% if mt_rnr1.cpic_alleles_called %}{% for x in mt_rnr1.cpic_alleles_called %}{{ x.allele | tex }} {{ x.state | tex }} (AF {{ x.af }}){{ ", " if not loop.last }}{% endfor %}{% else %}none at allele fraction $\geq$ {{ mt_rnr1.thresholds.heteroplasmic_min }}{% endif %}{% if mt_rnr1.cpic_low_level %}; low-level (not called): {% for x in mt_rnr1.cpic_low_level %}{{ x.allele | tex }} AF {{ x.af }}{{ ", " if not loop.last }}{% endfor %}{% endif %}. Passed to PharmCAT as \texttt{ {{- mt_rnr1.pharmcat_outside_call | tex -}} }. Positive control: {% for x in mt_rnr1.positive_controls_observed %}m.{{ x.pos }}{{ x.ref | tex }}\textgreater{}{{ x.alt | tex }} {{ x.state | tex }} (AF {{ x.af }}){{ ", " if not loop.last }}{% else %}none observed{% endfor %}.{% for fl in mt_rnr1.flags %} {{ fl | tex }}.{% endfor %}{% if figs.mt_rnr1 %} Figure~\ref{fig:mt_rnr1} (appendix) plots the allele fraction at every tested allele against the thresholds, with the two homoplasmic positive controls.{% endif %}
-
-{% endif %}
-\textbf{Other flagged CPIC/DPWG annotations (drug classes outside the contexts above, listed for completeness):}
-{% if actionable_outside_contexts %}
-\begin{small}
-\begin{longtable}{L{0.148}L{0.074}L{0.134}L{0.148}L{0.094}L{0.402}}
-\toprule Drug & Source & Gene(s) & Flag & Strength & Recommendation \\ \midrule \endhead
-{% for x in actionable_outside_contexts %}
-{{ x.drug | tex }} & {{ x.source | tex }} & {{ x.genes | tex }} & {{ x.flag | tex }} & {{ x.classification | tex }} & {{ x.recommendation | replace('\n', ' ') | tex }} \\
-{% endfor %}
-\bottomrule
-\end{longtable}
-\end{small}
-{% else %}
-None.
-{% endif %}
-
-\subsection{Modifier genotypes in the mechanistic panel}\label{sec:modifier}
-{% if modsum %}
-{{ modsum.variants_total }} variants ({{ modsum.variants_pass }} PASS); {{ modsum.rare }} rare; {{ modsum.functional }} functional; \textbf{ {{- modsum.rare_functional -}} rare and functional}:
-\begin{scriptsize}
-\begin{longtable}{L{0.09}L{0.15}L{0.06}L{0.05}L{0.12}L{0.16}L{0.08}L{0.09}L{0.07}L{0.13}}
-\toprule Gene & Variant & Filter & Zyg. & Consequence & HGVSp & gnomAD AF & ClinVar & SpliceAI & AlphaMissense \\ \midrule \endhead
-{% for r in modrf %}
-{{ r.gene | tex }} & {{ (r.chrom ~ ':' ~ r.pos ~ ' ' ~ r.ref ~ '>' ~ r.alt) | tex }} & {{ r.filter | tex }} & {{ r.zygosity | tex }} & {{ r.consequence | tex }} & {{ r.hgvsp | tex }} & {{ (r.gnomad_af_joint or 'absent') | tex }} & {{ (r.clinvar_significance or '-') | tex }} & {{ (r.spliceai_max_delta or '-') | tex }} & {{ (r.alphamissense_score or '-') | tex }} {{ r.alphamissense_class | tex }} \\
-{% endfor %}
-\bottomrule
-\end{longtable}
-\end{scriptsize}
-{% else %}
-Not available.
-{% endif %}
-{% if cnv %}
-\textbf{Structural variants and copy number (panel genes):} {{ cnv.sv_touching_panel }} Delly calls touch the panel ({{ cnv.sv_touching_panel_high_tier }} high tier, {{ cnv.sv_contradicted_by_depth }} contradicted by depth); supported: {{ (cnv.sv_supported | join('; ')) | tex if cnv.sv_supported else 'none' }}. Exon noise $\sigma$ = {{ cnv.exon_noise_sigma_log2_at_150bp | fmt | tex }} log2 at 150 bp; median gene CN {{ cnv.gene_cn_median | fmt | tex }}.{% if figs.panel_exon_cn %} Figure~\ref{fig:panel_exon_cn} (appendix) shows every usable exon's copy-number estimate across the panel, with the flagged exons marked.{% endif %}
-{% for g in genecn_calls %}
-{% if g.check %}
-{{ g.gene | tex }}: {{ g.cn_call | tex }}. Read-level check: depth {{ g.check.span_window_range | tex }}x across the run vs {{ g.check.flank_window_range | tex }}x in the flanks ({{ g.check.span_to_flank_ratio }} of flank median; a heterozygous deletion gives \textasciitilde{}0.5), Delly call: {{ g.check.delly_overlapping | tex or 'none' }}. \textbf{ {{- g.check.verdict | capitalize | tex -}} }{% if g.check.verdict == 'not confirmed' %}: classified as noise, not a finding{% else %}; requires orthogonal confirmation (MLPA or ddPCR){% endif %}.
-{% else %}
-{{ g.gene | tex }}: {{ g.cn_call | tex }} (candidate; read-level check not available; requires orthogonal confirmation).
-{% endif %}
-{% endfor %}
-{% endif %}
-
-\subsection{Mosaic aneuploidy burden}
-{% if aneu %}
-Internal control: chrX non-PAR LRR {{ aneu.internal_control_chrX_nonPAR_lrr | fmt | tex }} (expected {{ aneu.internal_control_expected }}). {{ aneu.het_sites_used }} heterozygous sites (median depth {{ aneu.het_depth_median | fmt | tex }}x), {{ aneu.bins_kept }} bins.
-\begin{small}
-\begin{longtable}{L{0.063}L{0.063}L{0.099}L{0.085}L{0.099}L{0.239}L{0.239}L{0.113}}
-\toprule Arm & Bins & Het sites & LRR & d & Status & Cell fraction (95\% CI) & Det.\ limit \\ \midrule \endhead
-{% for r in arm_rows %}
-{{ r.arm | tex }} & {{ r.n_bins }} & {{ r.n_het_sites }} & {{ r.lrr_mean | fmt | tex }} & {{ r.baf_d | fmt | tex }} & {{ r.status | tex }} & {% if r.cell_fraction is not none %}{{ r.cell_fraction | pct | tex }} [{{ r.cell_fraction_ci95[0] | pct | tex }}, {{ r.cell_fraction_ci95[1] | pct | tex }}] ({{ r.best_model | tex }}){% else %}--{% endif %} & {{ r.detection_limit_f.loss | pct | tex }} \\
-{% endfor %}
-\bottomrule
-\end{longtable}
-\end{small}
-{% if figs.genome %}Figure~\ref{fig:genome} shows depth and B-allele frequency genome-wide{% if figs.perchrom %}, Figure~\ref{fig:perchrom} the same per chromosome{% endif %}{% if figs.burden %}, and Figure~\ref{fig:burden} each arm's estimated burden against its own detection limit, which is the figure the null result rests on{% endif %}.{% endif %}
-{{ figure('genome') }}
-{{ figure('perchrom') }}
-{{ figure('burden') }}
-{% if karyotype_cmp %}
-\textbf{What a published MVA1 karyotype would look like here.} This assay can see an aneuploidy on a single arm only once it is present in at least {{ karyotype_cmp.best_limit | pct | tex }} of cells on the best arm, or {{ karyotype_cmp.median_limit | pct | tex }} on a median arm. {{ karyotype_cmp.citation | cite | tex }} report {{ karyotype_cmp.aneuploid_metaphases_pct }}\% aneuploid metaphases in a karyotype-confirmed MVA1 case. That burden was spread across about {{ karyotype_cmp.distinct_chromosomes }} distinct chromosomes, so the most recurrent single event ({{ karyotype_cmp.most_recurrent_event | tex }}) reached only {{ karyotype_cmp.most_recurrent_pct }}\% of cells, which is \textbf{ {{- '%.0f' | format(100 * karyotype_cmp.recurrent_vs_best) }}\% of the best-case limit}, and a typical {{ karyotype_cmp.typical_event_pct }}\% event only {{ '%.0f' | format(100 * karyotype_cmp.typical_vs_median) }}\% of the median limit. A burden of that shape is invisible to arm-level testing by construction: the burden is not small, it is spread. A null result here is therefore the expected result for MVA, not evidence that the assay failed.
-
-{% endif %}
-\textbf{Caveats (from the analysis output):}
-\begin{itemize}
-{% for c in aneu.caveats %}
-\item {{ c | tex }}
-{% endfor %}
-\end{itemize}
-{% else %}
-Not available.
-{% endif %}
-
-\subsection{Genome context and QC}
-{% if qc %}
-\begin{small}
-\begin{longtable}{L{0.321}L{0.154}L{0.077}L{0.448}}
-\toprule Check & Value & Status & Rule \\ \midrule \endhead
-{% for c in qc_checks %}
-{{ c.check | tex }} & {{ c.value | fmt | tex }} & {{ c.status | tex }} & {{ c.rule | tex }} \\
-{% endfor %}
-\bottomrule
-\end{longtable}
-\end{small}
-Ancestry: {{ qc.ancestry.predicted | tex }} ({{ qc.ancestry.reference | tex }}). Sex: {{ qc.sex_inferred.sex | tex }} (X/autosome depth {{ qc.sex_inferred.x_to_autosome_depth | fmt | tex }}, X het sites {{ qc.sex_inferred.x_het_sites | fmt | tex }}, Y depth {{ qc.sex_inferred.y_depth | fmt | tex }}, chrX LRR {{ qc.sex_inferred.chrX_lrr | fmt | tex }}). Reads {{ '{:,}'.format(qc.reads_total) }}; primary mapped {{ qc.primary_mapped_pct }}\%; duplicates {{ qc.duplicate_pct }}\%; mean autosomal depth {{ qc.mean_depth_autosomes }}x. ROH: $F_{ROH}$($\geq$1.5 Mb) = {{ qc.roh.F_ROH['>=1.5Mb'].F_ROH }}, longest {{ qc.roh.longest_roh.mb if qc.roh.longest_roh else 'n/a' }} Mb.
-
-{% if figs.ancestry_pca %}Figure~\ref{fig:ancestry_pca} places the sample among the reference populations; the ancestry caveat in the limitations applies to that cluster assignment, not to any haplotype.{% endif %}{% if figs.roh %} Figure~\ref{fig:roh} shows every run of homozygosity against the thresholds; the recurrent-miscarriage argument in Section~\ref{sec:mechanism} rests on none reaching 1.5 Mb.{% endif %}{% if figs.qc_overview %} The sequencing-level checks behind the table are in Figure~\ref{fig:qc_overview} (appendix).{% endif %}
-{{ figure('ancestry_pca') }}
-{{ figure('roh') }}
-{% else %}
-Not available.
-{% endif %}
-
-\section{Limitations}
-{% filter tex %}{% include 'limitations.j2' %}{% endfilter %}
-
-\section{Provenance}
-Pipeline {{ prov.pipeline.name | tex }} {{ prov.pipeline.version | tex }}, git \texttt{ {{- prov.pipeline.git_commit | tex -}} }{% if prov.pipeline.git_dirty %} (uncommitted changes){% endif %}, Nextflow {{ prov.pipeline.nextflow_version | tex }}, session \texttt{ {{- prov.pipeline.session_id | tex -}} }, profile \texttt{ {{- prov.pipeline.profile | tex -}} }, run started {{ prov.pipeline.run_start | tex }}. Reference: {{ prov.reference.build | tex }} / {{ prov.reference.name | tex }} (source md5 {{ prov.reference.source_md5 | tex }}).
-Modules behind the mechanism results: \texttt{readthrough\_analysis} (stop codon, 3' context, near-cognate products and the ClinVar share), \texttt{variant\_mechanism} (NMD sensitivity and the domain map), \texttt{mt\_rnr1\_call} (the aminoglycoside gate), \texttt{pgx\_annotate.nf} (the drug-driven pharmacogenomic join).
-\begin{itemize}
-{% for k, v in prov.databases.items() %}
-\item {{ k | tex }}: {{ v | tex }}
-{% endfor %}
-\end{itemize}
-\begin{small}
-\begin{longtable}{L{0.333}L{0.667}}
-\toprule Tool & Version(s) \\ \midrule \endhead
-{% for k, v in prov.tools.items() %}
-{{ k | tex }} & {{ v | tex }} \\
-{% endfor %}
-\bottomrule
-\end{longtable}
-\end{small}
-
-\section{Appendix: supplementary figures}
+\subsection{Supplementary figures}
 Figures that support the checks above without changing any conclusion. Each is drawn from a table this report also prints.
 
 {% if figs.qc_overview %}Figure~\ref{fig:qc_overview} shows the depth distribution, the per-chromosome mean depth that the sex check reads, and the insert-size distribution.{% endif %}

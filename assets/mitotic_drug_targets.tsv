@@ -1,0 +1,25 @@
+# Drugged nodes of the mitotic machinery: the gene set behind the report's "drugged neighbourhood"
+# statement in the therapeutic-problem section.
+#
+# WHAT THIS FILE IS AND IS NOT. The gene set is curated: these are the mitotic-machinery proteins
+# with the best-known drug discovery programmes, chosen because the question is "what do the drugs
+# near this pathway do", not "which genes are near BUB1B". It is not a computed neighbourhood and
+# the report does not claim it is exhaustive. What IS computed, at run time against the Open Targets
+# release recorded in the provenance, is the evidence: every clinical candidate against each gene,
+# its mechanism action type, and whether the gene carries one of the mitotic-fidelity GO terms the
+# anti-target rule uses. Nothing in the report asserts a drug's direction from this file.
+#
+# A gene with no clinical candidate stays in the set. The point of the statement is the direction of
+# the drugs that exist, and a gene the field has not drugged is part of that picture.
+#
+# ensembl_id is resolved from the symbol by ot_query.py at run time; the column here is the expected
+# value, checked against what the API returns so a symbol change is caught rather than absorbed.
+symbol	ensembl_id	role
+PLK1	ENSG00000166851	polo-like kinase 1; mitotic entry, centrosome maturation, cytokinesis
+AURKB	ENSG00000178999	aurora kinase B; chromosomal passenger complex, error correction at kinetochores
+CDK1	ENSG00000170312	cyclin-dependent kinase 1; master mitotic kinase driving entry into M phase
+TTK	ENSG00000112742	TTK/MPS1 kinase; recruits the spindle assembly checkpoint, directly upstream of BubR1
+KIF11	ENSG00000138160	kinesin-5/Eg5; centrosome separation and bipolar spindle assembly
+TOP2A	ENSG00000131747	topoisomerase II alpha; decatenation of sister chromatids before segregation
+CENPE	ENSG00000138778	centromere protein E; kinetochore motor, chromosome congression
+BIRC5	ENSG00000089685	survivin; chromosomal passenger complex member with the aurora kinases

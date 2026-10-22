@@ -77,6 +77,9 @@ def resolve(rel):
 prov = json.load(open(a.provenance))
 unmet = jload("ot_literature_MONDO_0009759_MONDO_0000141.json")
 tract = jload("ot_tractability_BUB1B.json")
+# what the drugs near the mitotic machinery do: computed per gene against the Open Targets
+# release, so the neighbourhood statement is evidence rather than assertion
+nbhd = jload("ot_neighbourhood.json")
 # small molecule first: it is the modality a repurposing candidate would most plausibly use
 MODALITY_ORDER = ["SM", "AB", "PR", "OC"]
 _bm = (tract or {}).get("by_modality") or {}
@@ -125,8 +128,10 @@ SUPPORT_HEADING = {
                       "These axes rest on the published series. The relevant features are not among those "
                       "released to participants, which is not evidence that they are absent. They are "
                       "presented as contingency, not as candidates for this child today."),
-    "mechanism_only": ("Derived from the genotype",
-                       "These axes follow from the variants themselves rather than from any observed feature."),
+    "mechanism_only": ("Derived from this child's causal variants",
+                       "These axes are proposed because of the variants found in this child's own genome: each "
+                       "candidate under them acts on a consequence of those variants. No clinical feature in the "
+                       "released set bears on them either way, so they stand or fall on the mechanism."),
 }
 # ---- stage 1b verdict rows, as printed
 # The join emits one row per (allele tested, evidence level, annotation category), so a drug whose
@@ -231,6 +236,9 @@ for ax in sorted(ot_axes, key=axis_order):
     support = next((d["support"] for d in drugs if d.get("support")), None)
     ot_by_axis.append({"axis": ax, "title": ot_axes[ax].get("title"), "rationale": ot_axes[ax].get("rationale"),
                        "role": ot_axes[ax].get("role") or "repurposing",
+                       # an axis whose listing belongs in the appendix: it does not bear on whether a
+                       # mechanism-derived candidate is valid (see the note in the drug list)
+                       "supplementary": bool(ot_axes[ax].get("supplementary")),
                        "drugs": drugs, "patient_support": support, "notes": keyed_notes(drugs)})
 # treatment the child is already receiving is reported in its own block, never as a repurposing axis:
 # the anti-target rules do not apply to it, and its drugs were queried whatever the rules said
@@ -250,6 +258,23 @@ ot_support_groups = [g for g in ot_support_groups if g["axes"]]
 # below a tumour-directed one by its support level alone
 ot_support_groups.sort(key=lambda g: min(axis_order(x["axis"]) for x in g["axes"]))
 ot_support_ungrouped = [x for x in ot_by_axis if x["patient_support"] not in SUPPORT_ORDER]
+# split the groups: the main report carries the axes the mechanism produced, the appendix the rest
+def _split_groups(groups, supp):
+    out = []
+    for g in groups:
+        axes = [x for x in g["axes"] if bool(x.get("supplementary")) == supp]
+        if axes:
+            out.append({**g, "axes": axes})
+    return out
+ot_groups_main = _split_groups(ot_support_groups, False)
+ot_groups_supp = _split_groups(ot_support_groups, True)
+ot_regimen_main = [x for x in ot_regimen if not x.get("supplementary")]
+ot_regimen_supp = [x for x in ot_regimen if x.get("supplementary")]
+# counts for the summary lines the main report keeps in place of each moved listing
+ot_supp_stats = {"axes": sum(len(g["axes"]) for g in ot_groups_supp),
+                 "drugs": sum(len(a["drugs"]) for g in ot_groups_supp for a in g["axes"]),
+                 "regimen_axes": len(ot_regimen_supp),
+                 "regimen_drugs": sum(len(a["drugs"]) for a in ot_regimen_supp)}
 ot_excluded = dl.get("excluded") or []
 ot_unresolved = dl.get("unresolved") or []
 ot_rules = dl.get("anti_target_rules") or {}
@@ -310,7 +335,7 @@ NON_NORMAL = ("poor metaboliz", "intermediate metaboliz", "rapid metaboliz", "ul
 SUPPORT_LABEL = {
     "released_feature": "supported by the released clinical features",
     "syndrome_only": "supported by the MVA1 literature, not by the released features",
-    "mechanism_only": "derived from the genotype",
+    "mechanism_only": "derived from this child's causal variants",
 }
 
 SOURCES = [("CPIC Guideline Annotation", "CPIC"), ("DPWG Guideline Annotation", "DPWG"),
@@ -386,6 +411,9 @@ for c in ctx_cfg["contexts"] if pc_report else []:
     gap = c.get("panel_gap") or {}
     pgx_contexts.append({"id": c["id"], "title": c["title"],
                          "patient_support": c["patient_support"],
+                         # supplementary contexts are reported in full in the appendix: they bear on
+                         # safety and feasibility, not on whether a repurposing candidate is valid
+                         "supplementary": bool(c.get("supplementary")),
                          "support_label": SUPPORT_LABEL.get(c["patient_support"], c["patient_support"]),
                          "why": " ".join(c["why"].split()),
                          "findings": findings,
@@ -398,6 +426,16 @@ for c in ctx_cfg["contexts"] if pc_report else []:
                                                     if not drug_known(d) and d.lower() in ot_regimen_names],
                          "unannotated_annotated": [d for d in c.get("unannotated_drugs") or [] if drug_known(d)],
                          "unannotated_note": " ".join((c.get("unannotated_note") or "").split())})
+pgx_contexts_main = [c for c in pgx_contexts if not c["supplementary"]]
+pgx_contexts_supp = [c for c in pgx_contexts if c["supplementary"]]
+# counts behind the one-line summary the main report keeps when contexts move to the appendix:
+# a reported negative is a finding, so the main text has to say how many there were
+pgx_ctx_stats = {"contexts": len(pgx_contexts), "supplementary": len(pgx_contexts_supp),
+                 "findings": sum(len(c["findings"]) for c in pgx_contexts),
+                 "no_change": sum(1 for c in pgx_contexts for f in c["findings"]
+                                  if f["status"] == "no genotype-based change"),
+                 "flagged": sum(1 for c in pgx_contexts for f in c["findings"]
+                                if f["status"] == "flagged by guideline")}
 released_ctx = [c for c in pgx_contexts if c["patient_support"] == "released_feature"]
 pgx_negatives = [f"{f['label']} ({c['title'].lower()})" for c in released_ctx for f in c["findings"]
                  if f["status"] == "no genotype-based change"]
@@ -443,12 +481,14 @@ for r in star or []:
     star_counts[r["status"]] = star_counts.get(r["status"], 0) + 1
 
 ctx = {
-    "sample": S, "prov": prov, "unmet_rows": unmet_rows, "tract": tract, "tract_mod": tract_mod, "qc": qc, "qc_checks": (qc or {}).get("checks") or [],
+    "sample": S, "prov": prov, "unmet_rows": unmet_rows, "tract": tract, "tract_mod": tract_mod, "nbhd": nbhd, "nbhd_sum": (nbhd or {}).get("summary") or {}, "qc": qc, "qc_checks": (qc or {}).get("checks") or [],
     "pgx": pgx, "pgx_rows": pgx_rows, "pgx_summary": (pgx or {}).get("summary"),
     "star_counts": star_counts, "star_rows": [r for r in (star or []) if r["status"] not in ("same",)],
     "hla": hla, "hla_rows": [r for r in (hla_calls or []) if r["gene"] in ("HLA-A", "HLA-B", "HLA-C")],
     "actionable": actionable, "n_guidelines": n_guidelines,
     "pgx_contexts": pgx_contexts, "pgx_negatives": pgx_negatives, "pgx_flagged": pgx_flagged,
+    "pgx_contexts_main": pgx_contexts_main, "pgx_contexts_supp": pgx_contexts_supp,
+    "pgx_ctx_stats": pgx_ctx_stats,
     "pgx_literature": pgx_literature, "actionable_outside_contexts": actionable_outside_contexts,
     "counterfactual": counterfactual, "cf_context_rows": cf_context_rows, "mt_rnr1": mt_rnr1,
     "star_cyp2d6": next((r for r in (star or []) if r["gene"] == "CYP2D6"), None),
@@ -466,6 +506,9 @@ ctx = {
     "cn_resolved": [g for g, c in cn_verdict.items() if c["verdict"] == "not confirmed"],
     "ot_sum": ot_sum, "ot_status": ot_status, "ot_by_axis": ot_by_axis, "ot_counts": ot_counts,
     "ot_support_groups": ot_support_groups, "ot_support_ungrouped": ot_support_ungrouped,
+    "ot_groups_main": ot_groups_main, "ot_groups_supp": ot_groups_supp,
+    "ot_regimen_main": ot_regimen_main, "ot_regimen_supp": ot_regimen_supp,
+    "ot_supp_stats": ot_supp_stats,
     "readthrough": readthrough, "rt": rt,
     "ot_regimen": ot_regimen, "ot_n_regimen": ot_n_regimen, "ot_n_repurposing": ot_n_repurposing,
     "ot_regimen_anti_target": ot_regimen_anti_target,
@@ -559,12 +602,16 @@ def pct(x, nd=1):
     return "not available" if x is None else f"{100 * x:.{nd}f}%"
 
 
-def tool(name):
-    return (prov.get("tools") or {}).get(name, "version not recorded")
+def tool(name, default="version not recorded"):
+    # default: for a tool whose process did not run in this session (e.g. bwa under
+    # --skip_alignment), the caller may supply the version recorded elsewhere (the CRAM @PG line)
+    return (prov.get("tools") or {}).get(name, default)
 
 
 def db(name):
-    return (prov.get("databases") or {}).get(name, "not recorded")
+    # query timestamps print as dates: the time of day carries no provenance a reader acts on
+    s = (prov.get("databases") or {}).get(name, "not recorded")
+    return re.sub(r"(\d{4}-\d{2}-\d{2})T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?", r"\1", str(s))
 
 
 # ---- literature citations (APA 7). Any rendered text may cite [@key] (parenthetical), [@+key] (narrative)
@@ -675,9 +722,29 @@ def refs_used():
 ctx.update(tool=tool, db=db, params=prov.get("params", {}), cite=cite, cite_pmid=cite_pmid, refs_used=refs_used,
            references=[l.strip() for l in open(os.path.join(a.templates, "references.txt")) if l.strip()])
 env = Environment(loader=FileSystemLoader(a.templates), undefined=StrictUndefined, trim_blocks=True, lstrip_blocks=True)
-env.filters.update(tex=tex, fmt=fmt, pct=pct, mdcell=mdcell, cite=cite, starname=starname)
+env.filters.update(tex=tex, fmt=fmt, pct=pct, mdcell=mdcell, cite=cite, starname=starname,
+                   mdbold=lambda s: re.sub(r"\*\*(.+?)\*\*", r"\\textbf{\1}", str(s)))
+# Table numbering. Markdown has no counter of its own and the LaTeX tables are longtables whose
+# captions would repeat on every continuation page, so both formats number through one call here.
+# The two templates emit the same tables in the same order, so the numbers agree between them; the
+# counter is reset before each render.
+class _TableCounter:
+    def __init__(self):
+        self.n = 0
+
+    def __call__(self):
+        self.n += 1
+        return self.n
+
+    def reset(self):
+        self.n = 0
+
+
+tnum = _TableCounter()
+ctx["tnum"] = tnum
 for tpl, out in (("report.md.j2", a.out_md), ("report.tex.j2", a.out_tex)):
     cite_used.clear()
+    tnum.reset()
     open(out, "w").write(env.get_template(tpl).render(**ctx))
 if cite_unknown:
     print(json.dumps({"unknown_citation_keys": sorted(set(cite_unknown))}))

@@ -352,8 +352,8 @@ summary = {
     "detection_limit_f_median_across_arms": {
         m: float(np.median([r["detection_limit_f"][m] for r in rows if r.get("tested")])) for m in ("gain", "loss", "cnloh")},
     "caveats": [
-        "Blood-derived DNA: the aneuploidy burden in blood may not reflect the tissues driving the phenotype.",
-        "In MVA, aneuploidy levels vary between tissues and over time; a single blood sample is one time point in one tissue.",
+        "The aneuploidy burden in the sequenced tissue may not reflect the tissues driving the phenotype; the specimen type is not stated in the released metadata.",
+        "In MVA, aneuploidy levels vary between tissues and over time; a single sample is one time point in one tissue.",
         f"Sensitivity depends on depth (median het-site depth {med_het_dp:.0f}x) and the number of informative sites per arm; "
         "the per-arm detection limit is reported, and a non-significant arm means below that limit, not absent.",
         "Random mosaic aneuploidy spread across many chromosomes at low level produces little imbalance on any single arm; "
