@@ -23,3 +23,7 @@ tests/stub/work/
 .nf-test/
 null/
 .nextflow.pid
+
+# Archives of results/: these bundle subject-derived outputs that are controlled-access under
+# the DUA, so they must never be committed or pushed.
+*.zip
