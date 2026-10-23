@@ -21,18 +21,23 @@ This child has mosaic variegated aneuploidy, caused by variants in BUB1B. The ho
 is that BUB1B cannot be drugged — an essential gene, with no approved drug and no clinical candidate
 in any modality.
 
-Worse, almost every drug near the spindle checkpoint is an inhibitor, developed to *reduce* mitotic
-fidelity in tumour cells. This disease *is* a loss of mitotic fidelity, so most of that pharmacology
-would make it worse. The strategy cannot be to fix the broken protein. It has to be compensation.
+So I asked whether anything near it could be drugged instead, and checked what those drugs actually
+do. Of seventy mechanism records against the mitotic machinery, sixty-nine are inhibitors —
+developed to *reduce* mitotic fidelity in tumour cells.
+
+This disease *is* a loss of mitotic fidelity, so that pharmacology would make it worse. The strategy
+cannot be to fix the broken protein. It has to be compensation.
 
 **[1:00 — method, ~40s]**
 
-I built a Nextflow pipeline that runs from raw reads to a finished report, every version pinned and
-every number traceable to the step that produced it.
+I built a Nextflow pipeline. It realigns the genome against a reference then annotates every variant in a thirty-two-gene panel — the genes reported in
+this syndrome, and the checkpoint machinery around them — for population frequency, clinical
+significance and predicted effect.
 
-It finds the causal variants rather than assuming them. Of three thousand three hundred variants
-across a thirty-two gene panel, five were both rare and functional — and two fell in BUB1B. One
-nonsense, one missense.
+It finds the causal variants: two rare variants in BUB1B, and both hit the same part of the
+protein. The nonsense allele truncates it before the kinase domain. The missense sits inside that
+domain. Between them, very little working BubR1 is left — and that is the checkpoint failure the
+disease is built on.
 
 And it encodes one rule as code: any drug that inhibits a mitotic-fidelity gene is excluded, and the
 pipeline reports what it rejected.
@@ -70,8 +75,8 @@ Thank you.
 
 ## Notes
 
-- **Length.** 455 spoken words: about 182 seconds at a normal 150 words-per-minute pace,
-  about 195 seconds if you take it slowly. Time one read-through before recording. If you are
+- **Length.** 502 spoken words: about 200 seconds at a normal 150 words-per-minute pace,
+  about 215 seconds if you take it slowly. Time one read-through before recording. If you are
   over, cut the "And it encodes one rule as code…" sentence rather than rushing the readthrough
   section — that section carries the argument.
 - **The one line to land.** "It doesn't assume a nonsense allele is druggable. It checks." That is
